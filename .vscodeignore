@@ -1,0 +1,6 @@
+.vscode/**
+test/**
+_tmp/**
+build.ps1
+.gitignore
+**/*.map

@@ -1,0 +1,252 @@
+{
+  "name": "workspace-manager",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "0.0.1",
+  "publisher": "gy903",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nhd-nana/workspace-manager.git"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "workspace storage",
+    "workspaceStorage",
+    "chat sessions",
+    "cleanup",
+    "会话",
+    "工作区"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "wsManager.workspaces",
+          "name": "%view.workspaces%"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "wsManager.refresh",
+        "title": "%command.refresh%",
+        "category": "%category%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "wsManager.openWorkspace",
+        "title": "%command.openWorkspace%",
+        "category": "%category%"
+      },
+      {
+        "command": "wsManager.revealFolder",
+        "title": "%command.revealFolder%",
+        "category": "%category%"
+      },
+      {
+        "command": "wsManager.copyPath",
+        "title": "%command.copyPath%",
+        "category": "%category%"
+      },
+      {
+        "command": "wsManager.showReport",
+        "title": "%command.showReport%",
+        "category": "%category%",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "wsManager.cleanDuplicates",
+        "title": "%command.cleanDuplicates%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "wsManager.findDuplicates",
+        "title": "%command.findDuplicates%",
+        "category": "%category%",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "wsManager.cleanCache",
+        "title": "%command.cleanCache%",
+        "category": "%category%",
+        "icon": "$(archive)"
+      },
+      {
+        "command": "wsManager.deleteWorkspace",
+        "title": "%command.deleteWorkspace%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "wsManager.deleteSession",
+        "title": "%command.deleteSession%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "wsManager.copySessionsTo",
+        "title": "%command.copySessionsTo%",
+        "category": "%category%"
+      },
+      {
+        "command": "wsManager.moveSessionsTo",
+        "title": "%command.moveSessionsTo%",
+        "category": "%category%"
+      },
+      {
+        "command": "wsManager.repairAll",
+        "title": "%command.repairAll%",
+        "category": "%category%",
+        "icon": "$(wrench)"
+      },
+      {
+        "command": "wsManager.repairIndex",
+        "title": "%command.repairIndex%",
+        "category": "%category%",
+        "icon": "$(wrench)"
+      },
+      {
+        "command": "wsManager.cleanEmptySessions",
+        "title": "%command.cleanEmptySessions%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "wsManager.restoreIndexBackup",
+        "title": "%command.restoreIndexBackup%",
+        "category": "%category%",
+        "icon": "$(history)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "wsManager.refresh",
+          "when": "view == wsManager.workspaces",
+          "group": "navigation@1"
+        },
+        {
+          "command": "wsManager.showReport",
+          "when": "view == wsManager.workspaces",
+          "group": "navigation@2"
+        },
+        {
+          "command": "wsManager.findDuplicates",
+          "when": "view == wsManager.workspaces",
+          "group": "navigation@3"
+        },
+        {
+          "command": "wsManager.cleanDuplicates",
+          "when": "view == wsManager.workspaces",
+          "group": "navigation@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "wsManager.openWorkspace",
+          "when": "view == wsManager.workspaces && viewItem =~ /^wsWorkspace/",
+          "group": "1_open@1"
+        },
+        {
+          "command": "wsManager.revealFolder",
+          "when": "view == wsManager.workspaces && viewItem =~ /^wsWorkspace/",
+          "group": "1_open@2"
+        },
+        {
+          "command": "wsManager.copyPath",
+          "when": "view == wsManager.workspaces && viewItem =~ /^wsWorkspace/",
+          "group": "2_copy@1"
+        },
+        {
+          "command": "wsManager.repairAll",
+          "when": "view == wsManager.workspaces && viewItem =~ /^wsWorkspace/",
+          "group": "3_repair@1"
+        },
+        {
+          "command": "wsManager.restoreIndexBackup",
+          "when": "view == wsManager.workspaces && viewItem =~ /^wsWorkspace/",
+          "group": "3_repair@2"
+        },
+        {
+          "command": "wsManager.deleteWorkspace",
+          "when": "view == wsManager.workspaces && viewItem == wsWorkspace",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "wsManager.cleanCache",
+          "when": "view == wsManager.workspaces && viewItem =~ /^wsWorkspace/",
+          "group": "5_clean@1"
+        },
+        {
+          "command": "wsManager.copySessionsTo",
+          "when": "view == wsManager.workspaces && viewItem == wsSession",
+          "group": "4_transfer@1"
+        },
+        {
+          "command": "wsManager.moveSessionsTo",
+          "when": "view == wsManager.workspaces && viewItem == wsSession",
+          "group": "4_transfer@2"
+        },
+        {
+          "command": "wsManager.deleteSession",
+          "when": "view == wsManager.workspaces && viewItem == wsSession",
+          "group": "9_danger@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "wsManager.openWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "wsManager.revealFolder",
+          "when": "false"
+        },
+        {
+          "command": "wsManager.copyPath",
+          "when": "false"
+        },
+        {
+          "command": "wsManager.deleteWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "wsManager.deleteSession",
+          "when": "false"
+        },
+        {
+          "command": "wsManager.copySessionsTo",
+          "when": "false"
+        },
+        {
+          "command": "wsManager.moveSessionsTo",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "%config.title%",
+      "properties": {
+        "wsManager.recommendOrphans": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.recommendOrphans%"
+        },
+        "wsManager.bigSessionMB": {
+          "type": "number",
+          "default": 50,
+          "minimum": 1,
+          "description": "%config.bigSessionMB%"
+        }
+      }
+    }
+  }
+}
