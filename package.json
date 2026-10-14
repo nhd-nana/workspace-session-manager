@@ -5,6 +5,11 @@
   "version": "0.0.1",
   "publisher": "gy903",
   "license": "MIT",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#5B21B6",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/nhd-nana/workspace-session-manager.git"
