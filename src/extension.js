@@ -132,7 +132,7 @@ function activate(context) {
    * 报告会直接以渲染形式打开。
    */
   async function showMarkdown(name, lines) {
-    const file = path.join(os.tmpdir(), `workspace-manager-${name}.md`);
+    const file = path.join(os.tmpdir(), `workspace-session-manager-${name}.md`);
     await vscode.workspace.fs.writeFile(vscode.Uri.file(file), Buffer.from(lines.join('\n'), 'utf8'));
     const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(file));
     await vscode.window.showTextDocument(doc, { preview: false });

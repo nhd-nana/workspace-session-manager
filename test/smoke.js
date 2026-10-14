@@ -43,8 +43,8 @@ const userDir = path.join(process.env.APPDATA, 'Code', 'User');
 const CURRENT_HASH = (process.env.WSM_HASH || '');
 
 const context = {
-  globalStorageUri: { fsPath: path.join(userDir, 'globalStorage', 'gy903.workspace-manager') },
-  storageUri: { fsPath: path.join(userDir, 'workspaceStorage', CURRENT_HASH, 'gy903.workspace-manager') }
+  globalStorageUri: { fsPath: path.join(userDir, 'globalStorage', 'gy903.workspace-session-manager') },
+  storageUri: { fsPath: path.join(userDir, 'workspaceStorage', CURRENT_HASH, 'gy903.workspace-session-manager') }
 };
 
 const t0 = Date.now();

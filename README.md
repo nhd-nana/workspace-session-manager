@@ -1,4 +1,4 @@
-# Workspace Manager — 工作区管家
+# Workspace & Session Manager — 工作区与会话管家
 
 > English: [**README.en.md**](README.en.md)
 

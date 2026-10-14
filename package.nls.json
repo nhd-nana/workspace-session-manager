@@ -1,5 +1,5 @@
 {
-    "displayName": "Workspace Manager",
+    "displayName": "Workspace & Session Manager",
     "description": "See every VS Code workspace storage and Copilot chat session at a glance: disk usage, session inventory, sessions missing from the panel, and stale index entries — all repairable in place. Deletions always go to the Recycle Bin and need your confirmation; the extension only recommends, it never deletes on its own.",
     "view.workspaces": "Workspace Manager",
     "category": "Workspace Manager",

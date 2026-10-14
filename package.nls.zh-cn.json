@@ -1,5 +1,5 @@
 {
-    "displayName": "Workspace Manager — 工作区管家",
+    "displayName": "Workspace & Session Manager — 工作区与会话管家",
     "description": "一览 VS Code 的所有工作区存储与 Copilot 会话：体积占用、会话清单、被隐藏的会话与失效的索引条目，并可就地修复。删除一律走回收站且需你确认——扩展只做推荐，绝不自动删。",
     "view.workspaces": "工作区管家",
     "category": "工作区管家",

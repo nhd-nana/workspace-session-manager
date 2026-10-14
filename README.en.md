@@ -1,4 +1,4 @@
-# Workspace Manager
+# Workspace & Session Manager
 
 > 中文版: [**README.md**](README.md)
 

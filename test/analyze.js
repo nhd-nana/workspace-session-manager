@@ -13,8 +13,8 @@ const { fmtSize, fmtDate } = require('../src/util');
 
 const userDir = path.join(process.env.APPDATA, 'Code', 'User');
 const context = {
-    globalStorageUri: { fsPath: path.join(userDir, 'globalStorage', 'gy903.workspace-manager') },
-    storageUri: { fsPath: path.join(userDir, 'workspaceStorage', (process.env.WSM_HASH || ''), 'gy903.workspace-manager') }
+    globalStorageUri: { fsPath: path.join(userDir, 'globalStorage', 'gy903.workspace-session-manager') },
+    storageUri: { fsPath: path.join(userDir, 'workspaceStorage', (process.env.WSM_HASH || ''), 'gy903.workspace-session-manager') }
 };
 
 const kw = (process.argv[2] || 'Code').toLowerCase();

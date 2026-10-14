@@ -1,5 +1,5 @@
 {
-  "name": "workspace-manager",
+  "name": "workspace-session-manager",
   "displayName": "%displayName%",
   "description": "%description%",
   "version": "0.0.1",
@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nhd-nana/workspace-manager.git"
+    "url": "https://github.com/nhd-nana/workspace-session-manager.git"
   },
   "engines": {
     "vscode": "^1.80.0"
