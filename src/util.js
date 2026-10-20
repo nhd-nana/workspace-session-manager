@@ -4,6 +4,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { t } = require('./l10n');
 
 function fmtSize(bytes) {
   if (!bytes) return '0 B';
@@ -19,9 +20,9 @@ function fmtDate(ms) {
   const d = new Date(ms);
   const now = Date.now();
   const days = (now - ms) / 86400000;
-  if (days < 1) return '今天';
-  if (days < 2) return '昨天';
-  if (days < 30) return `${Math.floor(days)} 天前`;
+  if (days < 1) return t('Today');
+  if (days < 2) return t('Yesterday');
+  if (days < 30) return t('{0} days ago', Math.floor(days));
   const p = (x) => String(x).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }

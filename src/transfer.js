@@ -16,6 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const sqlite = require('./sqlite');
 const repair = require('./repair');
+const { t } = require('./l10n');
 
 /** 写盘前备份 state.vscdb；返回备份路径，失败返回 null（调用方须中止） */
 function backup(dbPath) {
@@ -31,7 +32,7 @@ function backup(dbPath) {
 async function plan(ids, source, target) {
   const tgtDir = path.join(target.dir, 'chatSessions');
   if (!fs.existsSync(tgtDir)) {
-    return { ok: false, error: `目标工作区没有 chatSessions 目录：${tgtDir}` };
+    return { ok: false, error: t('The target workspace has no chatSessions folder: {0}', tgtDir) };
   }
   const tgtIds = new Set(repair.listSessionFiles(target.dir).map((f) => path.basename(f, '.jsonl')));
 
@@ -41,7 +42,7 @@ async function plan(ids, source, target) {
   for (const id of ids) {
     const src = path.join(source.dir, 'chatSessions', id + '.jsonl');
     if (!fs.existsSync(src)) { missing.push(id); continue; }
-    if (tgtIds.has(id)) { conflicts.push({ id, reason: '目标已有同 ID 会话' }); continue; }
+    if (tgtIds.has(id)) { conflicts.push({ id, reason: t('The target already has a session with the same ID') }); continue; }
     let size = 0;
     try { size = fs.statSync(src).size; } catch { /* ignore */ }
     toCopy.push({ id, src, dest: path.join(tgtDir, id + '.jsonl'), size });
@@ -62,7 +63,7 @@ async function plan(ids, source, target) {
  */
 async function registerInTarget(target, items, currentDbPath) {
   const dbPath = path.join(target.dir, 'state.vscdb');
-  if (!fs.existsSync(dbPath)) return { ok: false, error: '目标工作区没有 state.vscdb' };
+  if (!fs.existsSync(dbPath)) return { ok: false, error: t('The target workspace has no state.vscdb') };
 
   const r = await sqlite.readIndex(dbPath);
   if (!r.ok) return { ok: false, error: r.error };
@@ -84,7 +85,7 @@ async function registerInTarget(target, items, currentDbPath) {
   }
 
   const bak = backup(dbPath);
-  if (bak === null) return { ok: false, error: '备份 state.vscdb 失败，已中止' };
+  if (bak === null) return { ok: false, error: t('Failed to back up state.vscdb; aborted') };
 
   const w = await sqlite.writeIndex(dbPath, next, currentDbPath);
   if (!w.ok) return { ok: false, error: w.error, backup: bak };
@@ -100,7 +101,7 @@ async function registerInTarget(target, items, currentDbPath) {
  */
 async function unregisterFromSource(source, ids, currentDbPath) {
   const dbPath = path.join(source.dir, 'state.vscdb');
-  if (!fs.existsSync(dbPath)) return { ok: false, error: '源工作区没有 state.vscdb' };
+  if (!fs.existsSync(dbPath)) return { ok: false, error: t('The source workspace has no state.vscdb') };
 
   const r = await sqlite.readIndex(dbPath);
   if (!r.ok) return { ok: false, error: r.error };
@@ -113,7 +114,7 @@ async function unregisterFromSource(source, ids, currentDbPath) {
   }
 
   const bak = backup(dbPath);
-  if (bak === null) return { ok: false, error: '备份 state.vscdb 失败，已中止' };
+  if (bak === null) return { ok: false, error: t('Failed to back up state.vscdb; aborted') };
 
   const w = await sqlite.writeIndex(dbPath, next, currentDbPath);
   if (!w.ok) return { ok: false, error: w.error, backup: bak };

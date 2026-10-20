@@ -10,6 +10,7 @@ const path = require('path');
 const vscode = require('vscode');
 const { fmtSize, fmtDate, exists } = require('./util');
 const store = require('./store');
+const { t } = require('./l10n');
 
 class Node {
   constructor(kind, data) {
@@ -46,14 +47,14 @@ class WorkspaceTreeProvider {
 
   getTreeItem(node) {
     if (node.kind === 'workspace') return this._workspaceItem(node.data);
-    if (node.kind === 'group-parts') return this._groupItem(node, '存储明细', 'graph');
+    if (node.kind === 'group-parts') return this._groupItem(node, t('Storage details'), 'graph');
     if (node.kind === 'group-sessions') {
       const n = node.data.sessionFiles.length;
       const v = store.visibility(node.data);
-      const extra = v.known && v.orphan ? `，${v.orphan} 孤儿` : '';
-      return this._groupItem(node, `会话（${n}${extra}）`, 'comment-discussion');
+      const extra = v.known && v.orphan ? t(' · {0} orphaned', v.orphan) : '';
+      return this._groupItem(node, t('Sessions ({0}{1})', n, extra), 'comment-discussion');
     }
-    if (node.kind === 'group-index') return this._groupItem(node, '会话索引概览', 'list-tree');
+    if (node.kind === 'group-index') return this._groupItem(node, t('Session index overview'), 'list-tree');
     if (node.kind === 'stat') {
       const it = new vscode.TreeItem(node.data.label, vscode.TreeItemCollapsibleState.None);
       it.iconPath = new vscode.ThemeIcon(node.data.icon || 'info');
@@ -94,15 +95,15 @@ class WorkspaceTreeProvider {
 
   _indexRows(w) {
     const v = store.visibility(w);
-    if (!v.known) return [new Node('stat', { icon: 'warning', label: '读不到索引', desc: v.error })];
+    if (!v.known) return [new Node('stat', { icon: 'warning', label: t('Cannot read the index'), desc: v.error })];
     const rows = [
-      { icon: 'list-ordered', label: '索引条目', desc: v.external ? `${v.localIndexed} 本地 + ${v.external} 外部` : String(v.indexed) },
-      { icon: 'files', label: 'JSONL 文件', desc: String(v.jsonl) },
-      { icon: 'eye', label: '可见（交集）', desc: String(v.visible) }
+      { icon: 'list-ordered', label: t('Index entries'), desc: v.external ? t('{0} local + {1} external', v.localIndexed, v.external) : String(v.indexed) },
+      { icon: 'files', label: t('JSONL files'), desc: String(v.jsonl) },
+      { icon: 'eye', label: t('Visible (intersection)'), desc: String(v.visible) }
     ];
-    if (v.external) rows.push({ icon: 'globe', label: '外部会话（Copilot CLI / Claude 等）', desc: `${v.external} —— 实体在 agentSessionData，不是幽灵` });
-    if (v.orphan) rows.push({ icon: 'question', label: '孤儿（有文件、无索引）', desc: `${v.orphan} —— 面板里看不到` });
-    if (v.ghost) rows.push({ icon: 'warning', label: '幽灵（有索引、无文件）', desc: `${v.ghost} —— 面板里是空白项（跑一次「修复会话索引」即可清掉）` });
+    if (v.external) rows.push({ icon: 'globe', label: t('External sessions (Copilot CLI / Claude, etc.)'), desc: t('{0} — stored in agentSessionData, not ghosts', v.external) });
+    if (v.orphan) rows.push({ icon: 'question', label: t('Orphaned (file present, not indexed)'), desc: t('{0} — not visible in the panel', v.orphan) });
+    if (v.ghost) rows.push({ icon: 'warning', label: t('Ghost (indexed, file missing)'), desc: t('{0} — not visible either; “Repair Session Index” clears them', v.ghost) });
     return rows.map((r) => new Node('stat', r));
   }
 
@@ -117,7 +118,7 @@ class WorkspaceTreeProvider {
 
   _workspaceItem(w) {
     const flags = [];
-    if (w.isCurrent) flags.push('【当前】');
+    if (w.isCurrent) flags.push(t('[current]'));
     const reason = store.suggestReason(w);
     if (reason) flags.push('⚠️');
 
@@ -135,25 +136,25 @@ class WorkspaceTreeProvider {
         : (w.remote ? 'remote' : (w.folderExists ? 'folder' : 'folder-library'))
     );
     it.description = [
-      `${w.sessionFiles.length} 会话`,
-      w.size === null ? '(算体积…)' : fmtSize(w.size),
+      t('{0} sessions', w.sessionFiles.length),
+      w.size === null ? t('(measuring…)') : fmtSize(w.size),
       fmtDate(w.mtime)
     ].join(' · ');
 
     const md = new vscode.MarkdownString();
-    md.appendMarkdown(`**${w.label}**${w.isCurrent ? '　`当前工作区`' : ''}${w.remote ? '　`远程`' : ''}\n\n`);
-    md.appendMarkdown(`- 目标：\`${w.folderDisplay || w.folderPath || '（无）'}\`\n`);
-    md.appendMarkdown(`- 存在性：${w.remote ? '🌐 远程工作区（本地不校验）' : (w.folderExists ? '✅' : '❌ **不存在**')}\n`);
-    md.appendMarkdown(`- 体积：**${w.size === null ? '计算中…' : fmtSize(w.size)}**　会话：**${w.sessionFiles.length}**\n`);
-    md.appendMarkdown(`- 存储 hash：\`${w.hash}\`　最后使用：${fmtDate(w.mtime)}\n`);
+    md.appendMarkdown(`**${w.label}**${w.isCurrent ? '\u3000' + t('`current workspace`') : ''}${w.remote ? '\u3000' + t('`remote`') : ''}\n\n`);
+    md.appendMarkdown(t('- Target: `{0}`', w.folderDisplay || w.folderPath || t('(none)')) + '\n');
+    md.appendMarkdown(t('- Exists: {0}', w.remote ? t('🌐 Remote workspace (not checked locally)') : (w.folderExists ? '✅' : t('❌ **missing**'))) + '\n');
+    md.appendMarkdown(t('- Size: **{0}**　Sessions: **{1}**', w.size === null ? t('calculating…') : fmtSize(w.size), w.sessionFiles.length) + '\n');
+    md.appendMarkdown(t('- Storage hash: `{0}`　Last used: {1}', w.hash, fmtDate(w.mtime)) + '\n');
     if (w.size && w.parts) {
-      md.appendMarkdown(`\n体积构成：\n\n`);
+      md.appendMarkdown('\n' + t('Size breakdown:') + '\n\n');
       for (const p of w.parts.slice(0, 6)) {
         if (p.bytes <= 0) continue;
         md.appendMarkdown(`- ${p.name} · ${fmtSize(p.bytes)}\n`);
       }
     }
-    if (reason) md.appendMarkdown(`\n---\n\n$(warning) **建议删除**：${reason}\n`);
+    if (reason) md.appendMarkdown('\n---\n\n' + t('$(warning) **Consider deleting**: {0}', reason) + '\n');
     md.supportThemeIcons = true;
     it.tooltip = md;
     return it;
@@ -162,17 +163,17 @@ class WorkspaceTreeProvider {
   _partItem(p) {
     const c = store.classifyPart(p.name);
     const icon = c.kind === 'data' ? 'lock' : c.kind === 'cache' ? 'archive' : 'question';
-    const tag = c.kind === 'data' ? '数据' : c.kind === 'cache' ? '可清理' : '未识别';
+    const tag = c.kind === 'data' ? t('data') : c.kind === 'cache' ? t('cleanable') : t('unknown');
     const it = new vscode.TreeItem(p.name, vscode.TreeItemCollapsibleState.None);
     it.iconPath = new vscode.ThemeIcon(icon);
     it.description = `${fmtSize(p.bytes)}　${tag}`;
     it.contextValue = 'wsPart';
-    it.tooltip = `${p.name}　·　${fmtSize(p.bytes)}\n\n${tag}：${c.note}`;
+    it.tooltip = `${p.name}　·　${fmtSize(p.bytes)}\n\n${tag}: ${c.note}`;
     return it;
   }
 
   _sessionItem(s) {
-    const label = s.title || `(无标题) ${s.id.slice(0, 8)}`;
+    const label = s.title || t('(untitled) {0}', s.id.slice(0, 8));
     const it = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
     it.id = s.file;
     const bytes = (() => { try { return require('fs').statSync(s.file).size; } catch { return 0; } })();
@@ -183,23 +184,23 @@ class WorkspaceTreeProvider {
     try { bigLimit = vscode.workspace.getConfiguration('wsManager').get('bigSessionMB', 50); } catch { /* ignore */ }
     const big = bytes >= bigLimit * 1048576;
 
-    it.description = `${orphan ? '孤儿 · ' : ''}${big ? '⚠️ ' : ''}${fmtDate(s.created)} · ${fmtSize(bytes)}`;
+    it.description = `${orphan ? t('orphaned · ') : ''}${big ? '⚠️ ' : ''}${fmtDate(s.created)} · ${fmtSize(bytes)}`;
     it.iconPath = new vscode.ThemeIcon(orphan ? 'comment-unresolved' : big ? 'warning' : 'comment');
     it.contextValue = 'wsSession';
     // 点击不绑命令：信息全部放悬停提示（之前那种弹窗给的内容比 tooltip 还少，纯属多余）
     const tip = [
       label,
       '',
-      `创建：${s.created ? new Date(s.created).toLocaleString() : '未知'}`,
-      `大小：${fmtSize(bytes)}`,
-      orphan ? '⚠️ 孤儿：索引里没有登记，面板里看不到它' : '✅ 面板可见'
+      t('Created: {0}', s.created ? new Date(s.created).toLocaleString() : t('not recorded')),
+      t('Size: {0}', fmtSize(bytes)),
+      orphan ? t('⚠️ Orphaned: not in the index, invisible in the panel') : t('✅ Visible in the panel')
     ];
     if (big) {
-      tip.push('', `📦 体积已超过 ${bigLimit} MB —— 多半是工具输出或附件（base64）被写进了会话。`,
-        '  可在设置里调 wsManager.bigSessionMB 改阈值。');
+      tip.push('', t('📦 {0} MB or larger — tool output or base64 attachments were probably written into this session.', bigLimit),
+        t('  Tune the threshold with wsManager.bigSessionMB.'));
     }
-    if (s.fileTitle && s.fileTitle !== s.title) tip.push('', `文件里的首条消息：${s.fileTitle}`);
-    tip.push('', `id：${s.id}`, `文件：${s.file}`);
+    if (s.fileTitle && s.fileTitle !== s.title) tip.push('', t('First message in the file: {0}', s.fileTitle));
+    tip.push('', t('id: {0}', s.id), t('File: {0}', s.file));
     it.tooltip = tip.join('\n');
     return it;
   }

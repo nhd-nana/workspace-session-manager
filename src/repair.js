@@ -3,9 +3,10 @@
  * repair.js —— 修复「索引 ∩ 文件」失配：把孤儿会话补进索引、清掉无用的幽灵条目。
  *
  * 背景（详见 repo 记忆 vscode-session-storage.md）：
- *   · 面板显示 = 索引条目 ∩ chatSessions/{id}.jsonl 存在
+ *   · 面板显示 = 索引有 ∩ isExternal:false ∩ initialLocation:"panel" ∩ isEmpty:false（且不检查文件是否存在）
  *   · 孤儿 = 文件在、索引无 → 面板看不到（历史遗留：搬文件时索引没跟着搬）
- *   · 幽灵 = 索引在、文件无 → 面板出现空白项
+ *   · 幽灵 = 索引在、文件无 → 也看不到：文件不存在必然意味着没发过消息，`isEmpty` 也是 true
+ *     （例外：文件被外部工具删/搬而索引未同步 → 索引里留着陈旧的 isEmpty:false，这种才会显示成空白项）
  *
  * 安全红线（务必遵守）：
  *   🚫 绝不写「当前工作区」的库 —— VS Code 内存里的 indexCache 会在下次 storeSessions 时整体覆盖
@@ -17,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const sqlite = require('./sqlite');
 const store = require('./store');
+const { t } = require('./l10n');
 
 /** 默认：小于此字节数的孤儿视为空壳，不补进索引（避免面板多出一堆空白项） */
 const DEFAULT_MIN_BYTES = 2048;
@@ -50,9 +52,9 @@ function listSessionFiles(dir) {
 async function analyze(entry) {
   await store.ensureIndex(entry);
   const idx = entry._index;
-  if (!idx) return { ok: false, error: '索引未读取' };
+  if (!idx) return { ok: false, error: t('Index not loaded') };
   if (idx.error) return { ok: false, error: idx.error };
-  if (!idx.raw) return { ok: false, error: '索引不可用' };
+  if (!idx.raw) return { ok: false, error: t('Index unavailable') };
 
   const entries = idx.raw.entries || {};
   const keys = Object.keys(entries);
@@ -142,7 +144,7 @@ function buildEntry(f) {
   const created = meta.created && meta.created > 0 ? meta.created : f.mtime;
   return {
     sessionId: f.id,
-    title: meta.title || '(无标题)',
+    title: meta.title || t('(untitled)'),
     lastMessageDate: f.mtime,
     timing: {
       created,
@@ -227,14 +229,14 @@ function getBackup(dir) {
 function restoreBackup(dir) {
   const dbPath = path.join(dir, 'state.vscdb');
   const bakPath = dbPath + BAK_SUFFIX;
-  if (!fs.existsSync(bakPath)) return { ok: false, error: '没有备份可还原' };
-  if (!fs.existsSync(dbPath)) return { ok: false, error: 'state.vscdb 不存在' };
+  if (!fs.existsSync(bakPath)) return { ok: false, error: t('No backup to restore') };
+  if (!fs.existsSync(dbPath)) return { ok: false, error: t('state.vscdb not found') };
   try {
     const old = fs.readFileSync(bakPath);   // 先把旧备份读进内存
     fs.copyFileSync(dbPath, bakPath);       // 当前 → 备份（覆盖）
     fs.writeFileSync(dbPath, old);          // 旧 → state.vscdb
   } catch (e) {
-    return { ok: false, error: `还原失败：${e.message}` };
+    return { ok: false, error: t('Restore failed: {0}', e.message) };
   }
   return { ok: true, swapped: true };
 }
@@ -245,18 +247,18 @@ function restoreBackup(dir) {
  * @param {object} opts { backup?: boolean, currentDbPath?: string, allowCurrent?: boolean }
  */
 async function apply(entry, p, opts = {}) {
-  if (!p || !p.ok) return { ok: false, error: '计划无效' };
+  if (!p || !p.ok) return { ok: false, error: t('Invalid plan') };
   // allowCurrent: 对「当前工作区的窗口」也写盘 —— 只有在调用方能担保
   // 用户会**立即重载窗口**（重建 ChatSessionStore、丢弃内存 indexCache）时才可传 true
   if (entry.isCurrent && !opts.allowCurrent) {
     return {
       ok: false,
-      error: '拒绝写入当前工作区：VS Code 内存里的 indexCache 会在下次会话变更时整体覆盖盘上的索引。'
-        + '若确认能立即重载窗口，可传 allowCurrent。'
+      error: t('Refusing to write the current workspace: VS Code keeps the index in memory and would overwrite the on-disk copy on the next session change.')
+        + t(' If you can reload the window immediately, pass allowCurrent.')
     };
   }
   const dbPath = path.join(entry.dir, 'state.vscdb');
-  if (!fs.existsSync(dbPath)) return { ok: false, error: 'state.vscdb 不存在' };
+  if (!fs.existsSync(dbPath)) return { ok: false, error: t('state.vscdb not found') };
 
   const next = JSON.parse(JSON.stringify(p.index));
   if (!next.entries) next.entries = {};

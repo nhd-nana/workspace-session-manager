@@ -16,6 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
+const { t } = require('./l10n');
 
 const IDX_KEY = 'chat.ChatSessionStore.index';
 
@@ -35,14 +36,14 @@ function runSql(dbPath, sql, timeoutMs = 20000) {
         }
         const timer = setTimeout(() => {
             try { p.kill(); } catch { /* ignore */ }
-            resolve({ ok: false, error: `sqlite3 超时（${timeoutMs} ms）` });
+            resolve({ ok: false, error: t('sqlite3 timed out after {0} ms', timeoutMs) });
         }, timeoutMs);
 
         p.stdout.on('data', (d) => { out += d.toString('utf8'); });
         p.stderr.on('data', (d) => { err += d.toString('utf8'); });
         p.on('error', (e) => {
             clearTimeout(timer);
-            resolve({ ok: false, error: `无法启动 sqlite3：${e.message}（请确认它在 PATH 上）` });
+            resolve({ ok: false, error: t('Cannot start sqlite3: {0} (make sure it is on PATH)', e.message) });
         });
         p.on('close', (code) => {
             clearTimeout(timer);
@@ -65,17 +66,17 @@ async function isAvailable() {
 
 /** 读会话索引；返回 { ok, index?, error? } */
 async function readIndex(dbPath) {
-    if (!fs.existsSync(dbPath)) return { ok: false, error: 'state.vscdb 不存在' };
+    if (!fs.existsSync(dbPath)) return { ok: false, error: t('state.vscdb not found') };
     const r = await runSql(dbPath, `SELECT value FROM ItemTable WHERE key='${IDX_KEY}';`);
-    if (!r.ok) return { ok: false, error: r.error || r.stderr || `sqlite3 退出码 ${r.code}` };
+    if (!r.ok) return { ok: false, error: r.error || r.stderr || t('sqlite3 exited with code {0}', r.code) };
     const txt = (r.stdout || '').trim();
     if (!txt) return { ok: true, index: { version: 1, entries: {} } };
     try {
         const j = JSON.parse(txt);
-        if (!j || typeof j !== 'object' || !j.entries) return { ok: false, error: '索引结构非预期' };
+        if (!j || typeof j !== 'object' || !j.entries) return { ok: false, error: t('Unexpected index structure') };
         return { ok: true, index: j };
     } catch (e) {
-        return { ok: false, error: `索引 JSON 解析失败：${e.message}` };
+        return { ok: false, error: t('Failed to parse index JSON: {0}', e.message) };
     }
 }
 
@@ -85,7 +86,7 @@ async function readIndex(dbPath) {
  */
 async function writeIndex(dbPath, indexObj, currentDbPath) {
     if (currentDbPath && path.resolve(dbPath).toLowerCase() === path.resolve(currentDbPath).toLowerCase()) {
-        return { ok: false, error: '拒绝写入：目标是当前工作区的库（会被 VS Code 内存索引覆盖）' };
+        return { ok: false, error: t('Refusing to write: the target is the current workspace database (VS Code would overwrite it from its in-memory index)') };
     }
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wsmgr-'));
     const tmpFile = path.join(tmpDir, 'index.json');
@@ -98,7 +99,7 @@ async function writeIndex(dbPath, indexObj, currentDbPath) {
             'COMMIT;'
         ].join('\n');
         const r = await runSql(dbPath, sql);
-        if (!r.ok) return { ok: false, error: r.error || r.stderr || `sqlite3 退出码 ${r.code}` };
+        if (!r.ok) return { ok: false, error: r.error || r.stderr || t('sqlite3 exited with code {0}', r.code) };
         return { ok: true };
     } finally {
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }

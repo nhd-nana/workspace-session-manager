@@ -16,6 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const { dirStats, exists } = require('./util');
 const sqlite = require('./sqlite');
+const { t } = require('./l10n');
 // ⚠️ 不在此处 require('vscode')：让本模块能在纯 Node（脱离扩展宿主）下被 repair.js / 独立脚本复用。
 //    只有 decodeTarget() 用到 vscode.Uri，改为惰性 require。
 
@@ -164,10 +165,10 @@ function scan(context) {
       isCurrent: curHash === hash,
       orphan: !wj,
       target,
-      label: target ? target.label : `(无 workspace.json)`,
+      label: target ? target.label : t('(no workspace.json)'),
       remote: target ? !!target.remote : false,
       folderPath: target ? target.fsPath : null,
-      folderDisplay: target ? (target.folderDisplay || target.label) : '(无 workspace.json)',
+      folderDisplay: target ? (target.folderDisplay || target.label) : t('(no workspace.json)'),
       // true / false / null(null = 远程工作区，本地无法校验)
       folderExists: target ? (target.remote ? null : exists(target.fsPath)) : false,
       sessionFiles,
@@ -193,14 +194,14 @@ function scan(context) {
  * 宁可少清，不误删。
  */
 const PART_KINDS = {
-  'chatSessions': ['data', '会话数据 —— 删了就没了'],
-  'chatEditingSessions': ['data', 'AI 编辑历史 —— 删了就没了'],
-  'GitHub.copilot-chat': ['data', '调试日志 / 对话转录 / 会话附件'],
-  'workspace.json': ['data', '工作区标识 —— 不要删'],
-  'state.vscdb': ['data', '会话索引 + UI 状态 —— 不要删'],
-  'state.vscdb.backup': ['cache', 'VS Code 自己的索引备份 —— 可重建，但删了就少一层保护'],
-  'state.vscdb-wal': ['data', 'SQLite WAL 日志'],
-  'state.vscdb-shm': ['data', 'SQLite 共享内存']
+  'chatSessions': ['data', t('Session data \u2014 gone once deleted')],
+  'chatEditingSessions': ['data', t('AI edit history \u2014 gone once deleted')],
+  'GitHub.copilot-chat': ['data', t('Debug logs / transcripts / session attachments')],
+  'workspace.json': ['data', t('Workspace identity \u2014 do not delete')],
+  'state.vscdb': ['data', t('Session index + UI state \u2014 do not delete')],
+  'state.vscdb.backup': ['cache', t("VS Code's own index backup \u2014 rebuildable, but deleting it removes a safety net")],
+  'state.vscdb-wal': ['data', t('SQLite WAL log')],
+  'state.vscdb-shm': ['data', t('SQLite shared memory')]
 };
 
 /** 判一个子项属于哪类：data（数据）/ cache（可重建）/ unknown（不确定） */
@@ -208,13 +209,13 @@ function classifyPart(name) {
   const hit = PART_KINDS[name];
   if (hit) return { kind: hit[0], note: hit[1] };
   if (/^state\.vscdb\.wsmgr-bak/.test(name)) {
-    return { kind: 'cache', note: '本扩展的索引备份（单份，可用「还原索引备份」回退）' };
+    return { kind: 'cache', note: t("This extension's index backup (single copy; use \"Restore Index Backup\" to roll back)") };
   }
   // `<publisher>.<name>` 形式 = 某个扩展的 per-workspace 存储，基本都是缓存
   if (/^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/i.test(name)) {
-    return { kind: 'cache', note: '扩展的工作区缓存 —— 删后首次打开会重建（可能慢一次）' };
+    return { kind: 'cache', note: t("An extension's workspace cache \u2014 rebuilt on first open (may be slower once)") };
   }
-  return { kind: 'unknown', note: '用途不明 —— 不建议清理' };
+  return { kind: 'unknown', note: t('Unknown purpose \u2014 not recommended to clean') };
 }
 
 /** 该子项是否可以放心清理（只认明确的 cache） */
@@ -288,7 +289,7 @@ async function ensureIndex(entry) {
 /** 可见性统计：面板显示的是「索引 ∩ 文件存在」的交集 */
 function visibility(entry) {
   const idx = entry._index;
-  if (!idx) return { known: false, error: '未读取索引' };
+  if (!idx) return { known: false, error: t('Index not loaded') };
   if (idx.error) return { known: false, error: idx.error };
   const jsonlIds = new Set(entry.sessionFiles.map((f) => path.basename(f, '.jsonl')));
   let visible = 0;
@@ -310,10 +311,10 @@ function visibility(entry) {
 /** 这条工作区该不该建议删除（仅推荐，不执行） */
 function suggestReason(entry) {
   if (entry.isCurrent) return null;
-  if (entry.orphan) return '没有 workspace.json —— 条目已孤立，建议删除';
+  if (entry.orphan) return t('No workspace.json \u2014 the entry is orphaned, consider deleting');
   // 远程工作区（ssh-remote / wsl / dev-container）无法本地校验，不轻易下结论
   if (entry.remote) return null;
-  if (entry.folderExists === false) return `对应目录已不存在：${entry.folderPath} —— 建议删除`;
+  if (entry.folderExists === false) return t('The folder no longer exists: {0} \u2014 consider deleting', entry.folderPath);
   return null;
 }
 
