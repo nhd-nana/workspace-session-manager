@@ -53,6 +53,17 @@ function add(entry) {
     return save(list) ? list.length : -1;
 }
 
+/** 按会话文件移除一条待办（用户反悔用） */
+function remove(file) {
+    const list = load().filter((x) => x.file !== file);
+    return { ok: save(list), remaining: list.length };
+}
+
+/** 自动执行（计划任务）的日志 */
+function autoLogPath() {
+    return path.join(queueDir(), 'auto-apply.log');
+}
+
 /**
  * 读文件**尾部**最后一条 customTitle delta。
  * 追加的 delta 一定在文件末尾（若之后文件被整体重写成紧凑格式，delta 就消失了 → 返回 null）。
@@ -164,4 +175,4 @@ async function applyAll(opts = {}) {
     return { applied, confirmed, dropped, failed, indexPending, remaining: keep.length };
 }
 
-module.exports = { queueDir, queuePath, load, save, add, tailDelta, applyAll };
+module.exports = { queueDir, queuePath, autoLogPath, load, save, add, remove, tailDelta, applyAll };

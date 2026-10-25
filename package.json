@@ -2,7 +2,7 @@
   "name": "workspace-session-manager",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "publisher": "gy903",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -138,6 +138,42 @@
         "title": "%command.restoreIndexBackup%",
         "category": "%category%",
         "icon": "$(history)"
+      },
+      {
+        "command": "wsManager.dropPending",
+        "title": "%command.dropPending%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "wsManager.clearPending",
+        "title": "%command.clearPending%",
+        "category": "%category%",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "wsManager.showAutoLog",
+        "title": "%command.showAutoLog%",
+        "category": "%category%",
+        "icon": "$(output)"
+      },
+      {
+        "command": "wsManager.installAutoTask",
+        "title": "%command.installAutoTask%",
+        "category": "%category%",
+        "icon": "$(calendar)"
+      },
+      {
+        "command": "wsManager.uninstallAutoTask",
+        "title": "%command.uninstallAutoTask%",
+        "category": "%category%",
+        "icon": "$(calendar)"
+      },
+      {
+        "command": "wsManager.taskStatus",
+        "title": "%command.taskStatus%",
+        "category": "%category%",
+        "icon": "$(info)"
       }
     ],
     "menus": {
@@ -218,6 +254,21 @@
           "command": "wsManager.deleteSession",
           "when": "view == wsManager.workspaces && viewItem == wsSession",
           "group": "9_danger@1"
+        },
+        {
+          "command": "wsManager.dropPending",
+          "when": "view == wsManager.workspaces && viewItem == wsPending",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "wsManager.clearPending",
+          "when": "view == wsManager.workspaces && viewItem == wsPendingGroup",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "wsManager.showAutoLog",
+          "when": "view == wsManager.workspaces && viewItem == wsPendingGroup",
+          "group": "5_view@1"
         }
       ],
       "commandPalette": [
@@ -251,6 +302,14 @@
         },
         {
           "command": "wsManager.renameSession",
+          "when": "false"
+        },
+        {
+          "command": "wsManager.dropPending",
+          "when": "false"
+        },
+        {
+          "command": "wsManager.clearPending",
           "when": "false"
         }
       ]

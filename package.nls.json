@@ -22,5 +22,11 @@
     "command.repairAll": "One-Click Repair",
     "command.repairIndex": "Repair Session Index",
     "command.cleanEmptySessions": "Clean Empty Sessions",
-    "command.restoreIndexBackup": "Restore Index Backup"
+    "command.restoreIndexBackup": "Restore Index Backup",
+    "command.dropPending": "Drop This Pending Rename",
+    "command.clearPending": "Clear All Pending Renames",
+    "command.showAutoLog": "Show Automatic-Run Log",
+    "command.installAutoTask": "Install Scheduled Task (apply pending renames while VS Code is closed)",
+    "command.uninstallAutoTask": "Uninstall Scheduled Task",
+    "command.taskStatus": "Scheduled Task Status"
 }

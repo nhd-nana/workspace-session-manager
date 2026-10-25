@@ -22,5 +22,11 @@
     "command.repairAll": "一键修复",
     "command.repairIndex": "修复会话索引",
     "command.cleanEmptySessions": "清理空会话",
-    "command.restoreIndexBackup": "还原索引备份"
+    "command.restoreIndexBackup": "还原索引备份",
+    "command.dropPending": "撤销这条待办改名",
+    "command.clearPending": "清空全部待办改名",
+    "command.showAutoLog": "查看自动执行日志",
+    "command.installAutoTask": "安装计划任务（关闭 VS Code 后自动应用待办改名）",
+    "command.uninstallAutoTask": "卸载计划任务",
+    "command.taskStatus": "计划任务状态"
 }

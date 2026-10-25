@@ -667,6 +667,60 @@ function activate(context) {
     vscode.window.showInformationMessage(t('Renamed to "{0}".', newTitle));
   });
 
+  // ---------- 待办改名：撤销 / 查看日志 / 注册自动执行 ----------
+  reg('wsManager.dropPending', async (node) => {
+    const e = unwrap(node);
+    if (!e || !e.file) return;
+    const ok = await vscode.window.showWarningMessage(
+      t('Drop "{0}" from the pending queue? The session file has already been written; this only cancels the index fix.', e.title || e.file),
+      { modal: true },
+      BTN_TRASH
+    );
+    if (ok !== BTN_TRASH) return;
+    const r = pending.remove(e.file);
+    provider.refresh();
+    vscode.window.showInformationMessage(
+      r.ok ? t('Dropped. {0} pending rename(s) left.', r.remaining) : t('Could not update the queue file.')
+    );
+  });
+
+  reg('wsManager.clearPending', async () => {
+    const n = pending.load().length;
+    if (!n) return void vscode.window.showInformationMessage(t('The pending queue is empty.'));
+    const ok = await vscode.window.showWarningMessage(
+      t('Drop all {0} pending rename(s)? Session files keep their current titles; only the index fixes are cancelled.', n),
+      { modal: true },
+      BTN_TRASH
+    );
+    if (ok !== BTN_TRASH) return;
+    pending.save([]);
+    provider.refresh();
+    vscode.window.showInformationMessage(t('Pending queue cleared.'));
+  });
+
+  reg('wsManager.showAutoLog', async () => {
+    const p = pending.autoLogPath();
+    if (!require('fs').existsSync(p)) {
+      return void vscode.window.showInformationMessage(t('No automatic run has happened yet.'));
+    }
+    const doc = await vscode.workspace.openTextDocument(p);
+    await vscode.window.showTextDocument(doc, { preview: true });
+  });
+
+  async function runTaskScript(action) {
+    const ps = path.join(context.extensionPath, 'scripts', 'manage-task.ps1');
+    if (!require('fs').existsSync(ps)) {
+      return void vscode.window.showErrorMessage(t('manage-task.ps1 not found in the extension folder.'));
+    }
+    const term = vscode.window.createTerminal({ name: t('Workspace & Session Manager — task'), cwd: context.extensionPath });
+    term.show();
+    term.sendText(`powershell -NoProfile -ExecutionPolicy Bypass -File "${ps}" -Action ${action}`, true);
+  }
+
+  reg('wsManager.installAutoTask', () => runTaskScript('install'));
+  reg('wsManager.uninstallAutoTask', () => runTaskScript('uninstall'));
+  reg('wsManager.taskStatus', () => runTaskScript('status'));
+
   // ---------- 还原索引备份 ----------
   reg('wsManager.restoreIndexBackup', async (node) => {
     let w = unwrap(node);
