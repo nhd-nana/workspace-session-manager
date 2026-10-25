@@ -140,12 +140,12 @@ async function applyAll(opts = {}) {
             applied.push(e);
         }
 
-        // 索引：仅在「VS Code 已退出」的脚本模式下调校
-        let idxOk = null;
-        if (repairIndex && e.dir && e.id) {
+        // 索引：脚本模式（VS Code 已退出）才写；窗口里只**只读**看一眼，绝不写（写了必闪退）
+        let idxOk = false;
+        if (e.dir && e.id) {
             const idx = await indexTitleOf(e);
             idxOk = idx !== null && idx === e.title;
-            if (!idxOk) {
+            if (!idxOk && repairIndex) {
                 try {
                     const r = await titleMod.writeTitleToIndex(e.dir, e.id, e.title, opts.currentDbPath || null);
                     idxOk = r.ok;
@@ -154,8 +154,9 @@ async function applyAll(opts = {}) {
             if (!idxOk) indexPending.push(e);
         }
 
-        // 出队条件：文件在**上一次启动**就已经对上，且（要求修索引时）索引也对上
-        if (fileOk && e.appliedAt && (idxOk === null || idxOk)) { confirmed.push(e); continue; }
+        // 出队条件：文件在**上一次启动**就已经对上，**且索引也对上**。
+        // 索引不核对就不能出队 —— 否则“只差索引”的条目会被悄悄丢掉，改名永远不显示。
+        if (fileOk && e.appliedAt && idxOk) { confirmed.push(e); continue; }
         keep.push({ ...e, appliedAt: Date.now() });
     }
 
