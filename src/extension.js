@@ -657,10 +657,11 @@ function activate(context) {
           { modal: true, detail: HINT_APPLY }
         );
       }
-      // 设置关闭（默认）：立即尽力做，做不到就如实说，不排队
+      // 设置关闭（默认）：**不拦截**，而是把能持久的那一半做完（写会话文件），
+      // 并如实说清哪一半没做成、为什么会失败、什么情况下会自己生效。
       return void vscode.window.showWarningMessage(
-        t('Renamed to "{0}" in the session file, but the title in the list was NOT updated: that workspace is open in a window, and writing its index from outside makes VS Code crash (SQLITE_BUSY). So this rename may look like it did not happen. Close that workspace first, or rename it from another window.', newTitle),
-        { modal: true, detail: t('Tip: turn on "Allow editing open workspaces (preview)" in the settings to queue such renames and have them applied automatically after VS Code closes.') }
+        t('Renamed to "{0}" in the session file — that part is persistent. The title in the list was NOT updated: this workspace is open in a window, and writing its index from outside makes VS Code crash (SQLITE_BUSY).', newTitle),
+        { modal: true, detail: t('It usually shows up once that chat is loaded again, but it is lost if that chat is open right now and saves over the file. To be sure: rename it from another window (works immediately), or turn on "Allow editing open workspaces (preview)" so it gets applied automatically after VS Code closes.') }
       );
     }
 
