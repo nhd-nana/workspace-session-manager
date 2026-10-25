@@ -230,9 +230,10 @@
     "Keep it under 120 characters.": "请控制在 120 字以内。",
     "Renamed to \"{0}\".": "已改名为「{0}」。",
     "Applied {0} pending session rename(s) from the last window.": "已补写上一窗口遗留的 {0} 个改名。",
-    "No background process is spawned. To apply it right away, close VS Code and run scripts/apply-pending.js. Renaming sessions of *other* workspaces works immediately.": "**不会启动任何后台进程**。想立刻生效：先退出 VS Code，再跑 `scripts/apply-pending.js`。改**其它**工作区的会话则立刻生效。",
-    "Renamed to \"{0}\", but this session belongs to the current workspace: VS Code rewrites the session file from memory when this window saves, which would drop it. It is queued and will be re-applied on the next start.": "已改名为「{0}」，但这个会话属于**当前工作区**：本窗口保存时 VS Code 会按内存里的标题重写整个会话文件，把新名字抹掉。已记入**待办队列**，下次启动时自动补写。",
     "The session file no longer exists.": "会话文件已不存在。",
     "Written into the session file, but this session belongs to the current workspace, and the pending queue could not be saved. Rename it from another window instead.": "已写进会话文件，但这个会话属于**当前工作区**，且**待办队列保存失败**。请**到另一个窗口**里改这个会话。",
-    "Renamed to \"{0}\" in the session file, but the index was not updated: {1}": "已在会话文件里改名为「{0}」，但索引未更新：{1}"
+    "Close all VS Code windows, then run: node scripts/apply-pending.js --apply. No background process is spawned. Renaming sessions of *other* workspaces works immediately.": "**关闭所有 VS Code 窗口**，然后跑 `node scripts/apply-pending.js --apply`。不会启动任何后台进程。改**其它**工作区的会话则立刻生效。",
+    "Renamed to \"{0}\" in the session file. This session belongs to the current workspace, so the title shown in the list (which comes from the index) can only be fixed while VS Code is closed — it is queued for that.": "已在会话文件里改名为「{0}」。这个会话属于**当前工作区**，列表显示读的是**索引**，而索引只能在 VS Code 完全关闭时才能改 —— 已记入待办队列。",
+    "Renamed to \"{0}\" in the session file, but the index was not updated: {1} — it is queued for scripts/apply-pending.js.": "已在会话文件里改名为「{0}」，但索引未更新：{1} —— 已记入待办队列，交给 scripts/apply-pending.js。",
+    "Refusing to write: the workspace owning this database is open in a VS Code window. Writing it from outside makes VS Code hit SQLITE_BUSY and crash. Close that window first.": "拒绝写入：拥有这个数据库的工作区正被某个 VS Code 窗口打开。从外部写会让 VS Code 撞上 SQLITE_BUSY 而闪退。请先关掉那个窗口。"
 }

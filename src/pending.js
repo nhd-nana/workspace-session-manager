@@ -91,13 +91,19 @@ async function indexTitleOf(e) {
 /**
  * 执行队列。
  *
+ * 🔴 **窗口运行期间只碰文件，绝不写索引。**
+ *   `state.vscdb` 是活的 SQLite 连接，外部 `BEGIN IMMEDIATE` 会和 VS Code 抢锁；
+ *   而且索引在窗口内存里有完整副本，写了也会被冲掉。所以索引只交给
+ *   `scripts/apply-pending.js`（要求 VS Code 已退出）去修。
+ *
  * 出队策略是「**跨启动确认两次**」：
  *   第 N 次启动写入 → 标 appliedAt，**继续留队**
- *   第 N+1 次启动再看文件尾部：还是这个标题 → 说明确实活了 → 出队
- *   若被抹掉了（尾部对不上）→ 重写一遍，继续留队
- * 这样就算这次“抢不过”内存里的模型，下次启动也还能自愈。
+ *   第 N+1 次启动再看文件尾部：还是这个标题 → 确实活了 → 出队
+ *   被抹掉了（尾部对不上）→ 重写一遍，继续留队
+ * 索引没跟上的，留在队列里等脚本收尾。
  *
- * @returns {Promise<{applied:Array, confirmed:Array, dropped:Array, failed:Array, remaining:number}>}
+ * @param {{repairIndex?:boolean, currentDbPath?:string|null}} opts
+ *        repairIndex 只在「VS Code 已退出」的脚本里传 true。
  */
 async function applyAll(opts = {}) {
     const list = load();
@@ -108,6 +114,7 @@ async function applyAll(opts = {}) {
     const indexPending = [];
     const keep = [];
     const MAX_AGE = 90 * 86400000;
+    const repairIndex = opts.repairIndex === true;
 
     for (const e of list) {
         if (!e || !e.file || !e.title) { dropped.push({ e, reason: 'bad entry' }); continue; }
@@ -126,28 +133,29 @@ async function applyAll(opts = {}) {
             continue;
         }
 
-        if (cur === e.title) {
-            // 文件层已对：但**列表显示看的是索引**，索引不跟上就白改
+        const fileOk = cur === e.title;
+        if (!fileOk) {
+            const w = titleMod.writeTitleToFile(e.file, e.title);
+            if (!w.ok) { failed.push({ e, reason: w.error }); keep.push(e); continue; }
+            applied.push(e);
+        }
+
+        // 索引：仅在「VS Code 已退出」的脚本模式下调校
+        let idxOk = null;
+        if (repairIndex && e.dir && e.id) {
             const idx = await indexTitleOf(e);
-            const idxOk = idx !== null && idx === e.title;
-            if (!idxOk && e.dir && e.id) {
-                try { await titleMod.writeTitleToIndex(e.dir, e.id, e.title, opts.currentDbPath || null); } catch { /* ignore */ }
+            idxOk = idx !== null && idx === e.title;
+            if (!idxOk) {
+                try {
+                    const r = await titleMod.writeTitleToIndex(e.dir, e.id, e.title, opts.currentDbPath || null);
+                    idxOk = r.ok;
+                } catch { idxOk = false; }
             }
-            if (e.appliedAt && idxOk) { confirmed.push(e); continue; }  // 文件 + 索引都确认 → 真成了
             if (!idxOk) indexPending.push(e);
-            keep.push({ ...e, appliedAt: Date.now() });
-            continue;
         }
 
-        const w = titleMod.writeTitleToFile(e.file, e.title);
-        if (!w.ok) { failed.push({ e, reason: w.error }); keep.push(e); continue; }
-
-        if (!opts.skipIndex && e.dir && e.id) {
-            try {
-                await titleMod.writeTitleToIndex(e.dir, e.id, e.title, opts.currentDbPath || null);
-            } catch { /* 索引尽力而为，文件才是权威 */ }
-        }
-        applied.push(e);
+        // 出队条件：文件在**上一次启动**就已经对上，且（要求修索引时）索引也对上
+        if (fileOk && e.appliedAt && (idxOk === null || idxOk)) { confirmed.push(e); continue; }
         keep.push({ ...e, appliedAt: Date.now() });
     }
 

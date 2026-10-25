@@ -30,15 +30,17 @@ function activate(context) {
   const provider = new WorkspaceTreeProvider(context);
   provider.refresh();
 
-  // 兜底：把上次没落盘的「待办改名」补写一遍（此时会话模型还没加载，写入比较安全）
-  // 注意：**不起任何后台进程**。只用激活这一刻 + 用户可手跑的脚本，可审计、无残留。
-  pending.applyAll({}).then((r) => {
-    if (r.applied.length) {
-      vscode.window.showInformationMessage(
-        t('Applied {0} pending session rename(s) from the last window.', r.applied.length)
-      );
-    }
-  }).catch(() => { /* 队列坏了不影响主流程 */ });
+  // 兜底：把上次没落盘的「待办改名」补写一遍（**只碰文件**，不碰索引 —— 见 pending.js 注释）
+  // 队列为空时什么都不做，启动零开销。
+  if (pending.load().length) {
+    pending.applyAll({}).then((r) => {
+      if (r.applied.length) {
+        vscode.window.showInformationMessage(
+          t('Applied {0} pending session rename(s) from the last window.', r.applied.length)
+        );
+      }
+    }).catch(() => { /* 队列坏了不影响主流程 */ });
+  }
 
   const view = vscode.window.createTreeView('wsManager.workspaces', {
     treeDataProvider: provider,
@@ -628,32 +630,33 @@ function activate(context) {
     const wr = titleMod.writeTitleToFile(s.file, newTitle);
     if (!wr.ok) return void vscode.window.showErrorMessage(wr.error);
 
-    // ② 索引尽力而为（当前工作区的可能被内存版本覆盖，但文件里已有 customTitle，下次打开就对了）
     const dir = path.dirname(path.dirname(s.file));
-    const ir = await titleMod.writeTitleToIndex(dir, s.id, newTitle, null);
     const isCur = isCurrentWorkspaceSession(s.file);
 
-    provider.refresh();
-    if (!ir.ok) {
-      return void vscode.window.showWarningMessage(
-        t('Renamed to "{0}" in the session file, but the index was not updated: {1}', newTitle, ir.error)
-      );
-    }
-
-    // ③ 当前工作区的会话：VS Code 会把整个文件按内存里的标题重写（紧凑格式），把追加的增量抹掉
-    //    → 记进待办队列，下次启动时（或完全退出后跑 scripts/apply-pending.js）再落盘
-    //    有意**不**起后台进程：分离进程能父进程死后继续跑，是恶意软件特征，本扩展不做
+    // ② 当前工作区的会话：**索引一律不碰**
+    //    state.vscdb 是活的 SQLite 连接，外部 BEGIN IMMEDIATE 会和 VS Code 抢锁；
+    //    而且索引在窗口内存里有完整副本，写了也必被冲掉。→ 记进队列，交给关闭后的脚本
     if (isCur) {
       const n = pending.add({ file: s.file, id: s.id, dir, title: newTitle });
+      provider.refresh();
       if (n < 0) {
         return void vscode.window.showWarningMessage(
           t('Written into the session file, but this session belongs to the current workspace, and the pending queue could not be saved. Rename it from another window instead.')
         );
       }
       return void vscode.window.showWarningMessage(
-        t('Renamed to "{0}", but this session belongs to the current workspace: VS Code rewrites the session file from memory when this window saves, which would drop it. It is queued and will be re-applied on the next start.',
-          newTitle),
-        { modal: true, detail: t('No background process is spawned. To apply it right away, close VS Code and run scripts/apply-pending.js. Renaming sessions of *other* workspaces works immediately.') }
+        t('Renamed to "{0}" in the session file. This session belongs to the current workspace, so the title shown in the list (which comes from the index) can only be fixed while VS Code is closed — it is queued for that.', newTitle),
+        { modal: true, detail: t('Close all VS Code windows, then run: node scripts/apply-pending.js --apply. No background process is spawned. Renaming sessions of *other* workspaces works immediately.') }
+      );
+    }
+
+    // ③ 别的窗口 / 没开着的工作区：索引可以安全地直接改
+    const ir = await titleMod.writeTitleToIndex(dir, s.id, newTitle, null);
+    provider.refresh();
+    if (!ir.ok) {
+      pending.add({ file: s.file, id: s.id, dir, title: newTitle });
+      return void vscode.window.showWarningMessage(
+        t('Renamed to "{0}" in the session file, but the index was not updated: {1} — it is queued for scripts/apply-pending.js.', newTitle, ir.error)
       );
     }
 

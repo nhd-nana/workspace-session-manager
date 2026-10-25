@@ -17,6 +17,7 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const { t } = require('./l10n');
+const live = require('./live');
 
 const IDX_KEY = 'chat.ChatSessionStore.index';
 
@@ -81,12 +82,23 @@ async function readIndex(dbPath) {
 }
 
 /**
- * 写回会话索引。**调用方必须保证目标不是当前工作区**（本函数只做二次校验）。
- * 用临时文件 + readfile() 避开所有转义问题。
+ * 写回会话索引。
+ *
+ * 🔴 **绝不在「拥有这个库的窗口还开着」时写。**
+ *   `state.vscdb` 是活的 SQLite 连接；外部 `BEGIN IMMEDIATE` 期间 VS Code 自己写同一份库会撞锁，
+ *   主进程抛未捕获的 `SQLITE_BUSY` → **整个窗口闪退**（2026-10-26 实测崩dump + main.log）。
+ *   除了「锁」的问题，窗口内存里还有整份索引副本，外部写完也会被它冲掉。
+ *   → 运行时一律拒绝；只有在 VS Code 完全退出后跑 `scripts/apply-pending.js` 才允许。
  */
 async function writeIndex(dbPath, indexObj, currentDbPath) {
     if (currentDbPath && path.resolve(dbPath).toLowerCase() === path.resolve(currentDbPath).toLowerCase()) {
         return { ok: false, error: t('Refusing to write: the target is the current workspace database (VS Code would overwrite it from its in-memory index)') };
+    }
+    if (!process.env.WSMGR_FORCE && live.isDbOpen(dbPath)) {
+        return {
+            ok: false,
+            error: t('Refusing to write: the workspace owning this database is open in a VS Code window. Writing it from outside makes VS Code hit SQLITE_BUSY and crash. Close that window first.')
+        };
     }
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wsmgr-'));
     const tmpFile = path.join(tmpDir, 'index.json');

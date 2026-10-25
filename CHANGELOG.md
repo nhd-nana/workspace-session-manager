@@ -1,4 +1,20 @@
 # 更新日志
+## 0.0.9
+
+- 🔴 **修严重缺陷：外部写 `state.vscdb` 会让 VS Code 闪退。**
+  实测日志：
+  ```
+  [storage state.vscdb] transaction(): Error: SQLITE_BUSY: database is locked
+  [uncaught exception in main]: Error: SQLITE_BUSY: database is locked
+  ```
+  0.0.8 在 `activate` 里对**当前窗口正在用**的库做 `BEGIN IMMEDIATE`，VS Code 自己写同一份库时撞锁，
+  主进程抛未捕获异常 → Reload 直接关掉。**这是我的错，已堵死。**
+- 新增 `src/live.js`：读 `Code.exe` 命令行里的 `--folder-uri` / `--file-uri`，
+  判断「 owning 这个库的工作区是否正被某个窗口打开」。
+- `sqlite.writeIndex()` 现在**在所有写路径上**先过这道检查（不只改名，修复/搬运一并受保护），
+  被占用就拒绝并说明原因；只有 `scripts/apply-pending.js`（VS Code 已退出）才允许写。
+- 扩展运行期间**完全不再碰索引**：改名只写会话文件 + 入待办队列。
+
 ## 0.0.8
 
 - **修正：改完标题不生效的根因不在文件，在索引。**

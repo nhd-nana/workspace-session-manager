@@ -70,19 +70,32 @@ function isCodeRunning() {
 
     if (!apply) {
         if (isCodeRunning()) {
-            console.log('\n⚠️  VS Code 正在运行 —— 现在写入很可能被窗口回写覆盖。');
+            console.log('\n⚠️  VS Code 正在运行 —— 现在写入索引会被窗口回写覆盖。');
             console.log('    建议完全退出 VS Code 后加 --apply 重跑。');
         }
         console.log('\n[干跑] 加 --apply 才真的写。');
         return;
     }
 
-    const r = await pending.applyAll({});
+    // 索引只有在「没有进程持有它」时才敢改：VS Code 运行时外部 BEGIN IMMEDIATE 会和它抢锁
+    if (isCodeRunning() && !has('--force')) {
+        console.log('\n✗ 已中止：VS Code 还在运行。');
+        console.log('  窗口内存里有整份索引，写进去必被覆盖；而且外部写 state.vscdb 会让 VS Code 撞锁 SQLITE_BUSY 而闪退。');
+        console.log('  请**完全退出所有 VS Code 窗口**后重跑。（确认无所谓可加 --force）');
+        process.exit(2);
+    }
+    if (has('--force')) process.env.WSMGR_FORCE = '1';
+
+    const r = await pending.applyAll({ repairIndex: true });
     console.log(`\n写入 ${r.applied.length} 个｜确认生效 ${r.confirmed.length} 个｜作废 ${r.dropped.length} 个｜失败 ${r.failed.length} 个`);
+    if (r.indexPending.length) {
+        console.log(`索引没修好 ${r.indexPending.length} 个（多半是 sqlite3 不可用或条目不存在），已留在队列里：`);
+        for (const x of r.indexPending) console.log(`  · ${x.file}`);
+    }
     for (const x of r.dropped) console.log(`  ✗ 作废: ${x.e && x.e.file} — ${x.reason || ''}`);
     for (const x of r.failed) console.log(`  ✗ 失败: ${x.e && x.e.file} — ${x.reason}`);
     console.log(r.remaining
-        ? `队列里还剩 ${r.remaining} 条（下次启动会再核对一遍；两次都对上才出队）`
+        ? `队列里还剩 ${r.remaining} 条（下次启动会再核对；文件和索引都对上才出队）`
         : '队列已清空。');
 })().catch((e) => {
     console.log('✗ 出错:', (e && e.message) || e);
