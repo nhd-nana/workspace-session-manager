@@ -2,7 +2,7 @@
   "name": "workspace-session-manager",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "publisher": "gy903",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -327,6 +327,14 @@
           "default": 50,
           "minimum": 1,
           "description": "%config.bigSessionMB%"
+        },
+        "wsManager.pendingQueue": {
+          "type": "boolean",
+          "default": false,
+          "tags": [
+            "preview"
+          ],
+          "markdownDescription": "%config.pendingQueue%"
         }
       }
     }

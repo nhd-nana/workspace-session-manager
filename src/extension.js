@@ -17,6 +17,7 @@ const transfer = require('./transfer');
 const dup = require('./dup');
 const titleMod = require('./title');
 const pending = require('./pending');
+const live = require('./live');
 const { fmtSize, fmtDate } = require('./util');
 const { t } = require('./l10n');
 
@@ -59,7 +60,7 @@ function activate(context) {
   const BTN_RESTORE = t('Restore');
   const idxErr = (e) => t('Failed to read the index: {0}', e);
   // 唯一可靠路径：关光窗口 → 跑脚本（写完就退出，不留后台进程）
-  const HINT_APPLY = t('Close ALL VS Code windows, then run:\n\n    node scripts/apply-pending.js --apply\n\nIt writes and exits immediately — no background process is left behind.');
+  const HINT_APPLY = t('Applied automatically once VS Code is closed (scheduled task; you can also run scripts/apply-pending.js --apply yourself). No process stays running in the background. Right-click the "Pending renames" group to undo.');
 
   const reg = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
@@ -636,31 +637,39 @@ function activate(context) {
 
     const dir = path.dirname(path.dirname(s.file));
     const isCur = isCurrentWorkspaceSession(s.file);
+    // 目标工作区是否正被**任何一个**窗口开着（不只本窗口）
+    const isOpen = isCur || live.isDbOpen(path.join(dir, 'state.vscdb'));
+    const queueMode = vscode.workspace.getConfiguration('wsManager').get('pendingQueue', false) === true;
 
-    // ② 当前工作区的会话：**索引一律不碰**
-    //    state.vscdb 是活的 SQLite 连接，外部 BEGIN IMMEDIATE 会和 VS Code 抢锁；
-    //    而且索引在窗口内存里有完整副本，写了也必被冲掉。→ 记进队列，交给关闭后的脚本
-    if (isCur) {
-      const n = pending.add({ file: s.file, id: s.id, dir, title: newTitle });
-      provider.refresh();
-      if (n < 0) {
+    // ② 工作区开着 → 索引改不了（外部写会让 VS Code 撞 SQLITE_BUSY 闪退）
+    if (isOpen) {
+      // 设置开启：入队，等关闭后的计划任务 / 离线脚本收尾
+      if (queueMode) {
+        const n = pending.add({ file: s.file, id: s.id, dir, title: newTitle });
+        provider.refresh();
+        if (n < 0) {
+          return void vscode.window.showWarningMessage(
+            t('Written into the session file, but the pending queue could not be saved. Rename it from another window instead.')
+          );
+        }
         return void vscode.window.showWarningMessage(
-          t('Written into the session file, but this session belongs to the current workspace, and the pending queue could not be saved. Rename it from another window instead.')
+          t('Renamed to "{0}" in the session file. That workspace is open, so the list title (which comes from the index) is queued — it gets applied after VS Code is closed.', newTitle),
+          { modal: true, detail: HINT_APPLY }
         );
       }
+      // 设置关闭（默认）：立即尽力做，做不到就如实说，不排队
       return void vscode.window.showWarningMessage(
-        t('Renamed to "{0}" in the session file. This session belongs to a workspace that is open in a window, so the title shown in the list (which comes from the index) cannot be fixed right now — it is queued for the offline script.', newTitle),
-        { modal: true, detail: HINT_APPLY }
+        t('Renamed to "{0}" in the session file, but the title in the list was NOT updated: that workspace is open in a window, and writing its index from outside makes VS Code crash (SQLITE_BUSY). So this rename may look like it did not happen. Close that workspace first, or rename it from another window.', newTitle),
+        { modal: true, detail: t('Tip: turn on "Allow editing open workspaces (preview)" in the settings to queue such renames and have them applied automatically after VS Code closes.') }
       );
     }
 
-    // ③ 别的窗口 / 没开着的工作区：索引可以安全地直接改
+    // ③ 没开着的工作区：索引可以安全地直接改
     const ir = await titleMod.writeTitleToIndex(dir, s.id, newTitle, null);
     provider.refresh();
     if (!ir.ok) {
-      pending.add({ file: s.file, id: s.id, dir, title: newTitle });
       return void vscode.window.showWarningMessage(
-        t('Renamed to "{0}" in the session file, but the index was not updated: {1} — it is queued for scripts/apply-pending.js.', newTitle, ir.error)
+        t('Renamed to "{0}" in the session file, but the index was not updated: {1}', newTitle, ir.error)
       );
     }
 

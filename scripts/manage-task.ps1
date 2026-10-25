@@ -47,28 +47,20 @@ switch ($Action) {
 
     'install' {
         if (-not (Test-Path $Entry)) { throw "auto-apply.js not found at $Entry" }
-        $node = Get-NodePath
-        $q = '"' + $node + '"'
-        $arg = '"' + $Entry + '"'
+        $vbs = Join-Path $ScriptDir 'auto-apply-hidden.vbs'
+        if (-not (Test-Path $vbs)) { throw "auto-apply-hidden.vbs not found at $vbs" }
+        $wscript = Join-Path $env:WINDIR 'System32\wscript.exe'
+        $tr = '"' + $wscript + '" "' + $vbs + '"'
 
-        # Trigger 1: at logon. Trigger 2: every 5 minutes, forever.
-        $t1 = New-ScheduledTaskTrigger -AtLogOn
-        $t2 = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
-            -RepetitionInterval (New-TimeSpan -Minutes 5)
-        $act = New-ScheduledTaskAction -Execute $node -Argument $arg -WorkingDirectory $ScriptDir
-        $set = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew `
-            -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 5) `
-            -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
-        $me = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-        $prn = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Limited
-
-        Register-ScheduledTask -TaskName $TaskName -Action $act -Trigger @($t1, $t2) `
-            -Settings $set -Principal $prn -Force `
-            -Description 'Applies queued workspace-session-manager session renames while VS Code is closed. Exits immediately if Code.exe is running or the queue is empty.' | Out-Null
+        # schtasks instead of Register-ScheduledTask: the latter needs elevation
+        # (Access is denied for a standard user registering a task).
+        # Running through wscript keeps the console window hidden.
+        & schtasks.exe /create /tn $TaskName /tr $tr /sc minute /mo 5 /f | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "schtasks failed with exit code $LASTEXITCODE" }
 
         Write-Host "Installed task '$TaskName'." -ForegroundColor Green
-        Write-Host "  Runs : $q $arg"
-        Write-Host "  When : at logon, and every 5 minutes"
+        Write-Host "  Runs : $tr"
+        Write-Host "  When : every 5 minutes (while you are logged on)"
         Write-Host "  Skips: whenever Code.exe is running, or the queue is empty"
         Write-Host "  Log  : %APPDATA%\Code\User\globalStorage\gy903.workspace-session-manager\auto-apply.log"
         Write-Host "`nRemove it any time with: -Action uninstall"
@@ -77,7 +69,7 @@ switch ($Action) {
     'uninstall' {
         $t = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
         if (-not $t) { Write-Host "Task '$TaskName' is not installed." -ForegroundColor Yellow; break }
-        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+        & schtasks.exe /delete /tn $TaskName /f | Out-Null
         Write-Host "Removed task '$TaskName'." -ForegroundColor Green
     }
 }
