@@ -116,4 +116,4 @@ async function applyAll(opts = {}) {
     return { applied, already, dropped, failed, remaining: failed.length };
 }
 
-module.exports = { queuePath, load, save, add, tailDelta, applyAll };
+module.exports = { queueDir, queuePath, load, save, add, tailDelta, applyAll };

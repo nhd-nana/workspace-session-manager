@@ -113,11 +113,6 @@
         "category": "%category%"
       },
       {
-        "command": "wsManager.testWatcher",
-        "title": "%command.testWatcher%",
-        "category": "%category%"
-      },
-      {
         "command": "wsManager.repairAll",
         "title": "%command.repairAll%",
         "category": "%category%",

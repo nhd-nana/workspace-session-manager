@@ -19,7 +19,6 @@
     "command.copySessionsTo": "Copy Sessions To…",
     "command.moveSessionsTo": "Move Sessions To…",
     "command.renameSession": "Rename Session (writes into the session file)",
-    "command.testWatcher": "Test: spawn the detached watcher (verifies it survives a window close)",
     "command.repairAll": "One-Click Repair",
     "command.repairIndex": "Repair Session Index",
     "command.cleanEmptySessions": "Clean Empty Sessions",

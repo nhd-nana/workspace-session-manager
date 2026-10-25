@@ -17,7 +17,6 @@ const transfer = require('./transfer');
 const dup = require('./dup');
 const titleMod = require('./title');
 const pending = require('./pending');
-const watcher = require('./watcher');
 const { fmtSize, fmtDate } = require('./util');
 const { t } = require('./l10n');
 
@@ -32,6 +31,7 @@ function activate(context) {
   provider.refresh();
 
   // 兜底：把上次没落盘的「待办改名」补写一遍（此时会话模型还没加载，写入比较安全）
+  // 注意：**不起任何后台进程**。只用激活这一刻 + 用户可手跑的脚本，可审计、无残留。
   pending.applyAll({}).then((r) => {
     if (r.applied.length) {
       vscode.window.showInformationMessage(
@@ -641,7 +641,8 @@ function activate(context) {
     }
 
     // ③ 当前工作区的会话：VS Code 会把整个文件按内存里的标题重写（紧凑格式），把追加的增量抹掉
-    //    → 记进待办队列，等下次启动（或完全退出后跑 scripts\apply-pending.js）再落盘
+    //    → 记进待办队列，下次启动时（或完全退出后跑 scripts/apply-pending.js）再落盘
+    //    有意**不**起后台进程：分离进程能父进程死后继续跑，是恶意软件特征，本扩展不做
     if (isCur) {
       const n = pending.add({ file: s.file, id: s.id, dir, title: newTitle });
       if (n < 0) {
@@ -649,25 +650,14 @@ function activate(context) {
           t('Written into the session file, but this session belongs to the current workspace, and the pending queue could not be saved. Rename it from another window instead.')
         );
       }
-      // 拉起分离进程：等这个工作区的窗口全关掉再把改名补写回去（VS Code 关掉后它照样活）
-      watcher.spawnWatcher(context.extensionPath);
       return void vscode.window.showWarningMessage(
-        t('Renamed to "{0}", but this session belongs to the current workspace: VS Code rewrites the session file from memory when this window saves, which would drop it. It is now queued and will be re-applied on the next start — or run scripts/apply-pending.js after closing VS Code.',
+        t('Renamed to "{0}", but this session belongs to the current workspace: VS Code rewrites the session file from memory when this window saves, which would drop it. It is queued and will be re-applied on the next start.',
           newTitle),
-        { modal: true, detail: t('Renaming sessions of *other* workspaces works immediately and needs no queue.') }
+        { modal: true, detail: t('No background process is spawned. To apply it right away, close VS Code and run scripts/apply-pending.js. Renaming sessions of *other* workspaces works immediately.') }
       );
     }
 
     vscode.window.showInformationMessage(t('Renamed to "{0}".', newTitle));
-  });
-
-  // ---------- 测试：拉起分离进程 ----------
-  reg('wsManager.testWatcher', async () => {
-    const r = watcher.spawnWatcher(context.extensionPath, ['--probe', '3']);
-    vscode.window.showInformationMessage(
-      t('Spawned a detached watcher (pid {0}) via {1}. It writes a heartbeat every 5 s for 3 minutes — close this window and watch the log to see whether it survives.',
-        String(r.pid), r.cmd)
-    );
   });
 
   // ---------- 还原索引备份 ----------
