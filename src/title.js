@@ -90,4 +90,17 @@ async function writeTitleToIndex(dir, id, title, currentDbPath) {
     return w.ok ? { ok: true } : { ok: false, error: w.error };
 }
 
-module.exports = { writeTitleToFile, writeTitleToIndex, isLogFormat };
+/**
+ * 读索引里的 title（列表显示用的是它，不是会话文件）。
+ * @returns {Promise<{ok:boolean, title?:string|null, error?:string}>}
+ */
+async function readIndexTitle(dir, id) {
+    const dbPath = path.join(dir, 'state.vscdb');
+    const r = await sqlite.readIndex(dbPath);
+    if (!r.ok) return { ok: false, error: r.error };
+    const entry = r.index.entries && r.index.entries[id];
+    if (!entry) return { ok: false, error: t('This session is not registered in the index (it is an orphan).') };
+    return { ok: true, title: typeof entry.title === 'string' ? entry.title : null };
+}
+
+module.exports = { writeTitleToFile, writeTitleToIndex, readIndexTitle, isLogFormat };

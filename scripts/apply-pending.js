@@ -49,10 +49,23 @@ function isCodeRunning() {
         const exists = e.file && fs.existsSync(e.file);
         let cur = null;
         if (exists) { try { cur = pending.tailDelta(e.file); } catch { /* ignore */ } }
+        // 列表显示看的是**索引**，文件对了不代表改成功
+        let idx = null;
+        if (e.dir && e.id) {
+            try {
+                const r = await require('../src/title').readIndexTitle(e.dir, e.id);
+                idx = r.ok ? r.title : `(读不到: ${r.error})`;
+            } catch (err) { idx = `(读不到: ${(err && err.message) || err})`; }
+        }
+        const fileOk = cur === e.title;
+        const idxOk = idx === e.title;
         console.log(`\n  ${e.title}`);
         console.log(`    file    : ${e.file}${exists ? '' : '  ✗ 不存在'}`);
-        console.log(`    当前尾部: ${cur === null ? '(无 customTitle delta)' : JSON.stringify(cur)}`);
-        console.log(`    待写入  : ${JSON.stringify(e.title)}${cur === e.title ? '  ← 已生效，会出队' : ''}`);
+        console.log(`    文件尾部: ${cur === null ? '(无 customTitle delta)' : JSON.stringify(cur)}  ${fileOk ? '✅' : '✗'}`);
+        console.log(`    索引标题: ${idx === null ? '(未记录 dir/id)' : JSON.stringify(idx)}  ${idxOk ? '✅' : '✗'}`);
+        if (fileOk && idxOk) console.log('    状态    : 两处都已生效 → 会出队');
+        else if (fileOk) console.log('    状态    : 只差索引（必须关掉 VS Code 才能修）');
+        else console.log('    状态    : 需要写入会话文件');
     }
 
     if (!apply) {

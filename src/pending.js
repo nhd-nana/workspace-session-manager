@@ -77,6 +77,18 @@ function tailDelta(file, bytes = 1 << 20) {
 }
 
 /**
+ * 读索引里的 title；读不到（无 sqlite3 / 条目不存在）返回 null。
+ * 列表显示用的是索引，不是会话文件 —— 两边都要对上才算真的改了名。
+ */
+async function indexTitleOf(e) {
+    if (!e.dir || !e.id) return null;
+    try {
+        const r = await titleMod.readIndexTitle(e.dir, e.id);
+        return r.ok ? r.title : null;
+    } catch { return null; }
+}
+
+/**
  * 执行队列。
  *
  * 出队策略是「**跨启动确认两次**」：
@@ -93,6 +105,7 @@ async function applyAll(opts = {}) {
     const confirmed = [];
     const dropped = [];
     const failed = [];
+    const indexPending = [];
     const keep = [];
     const MAX_AGE = 90 * 86400000;
 
@@ -114,8 +127,15 @@ async function applyAll(opts = {}) {
         }
 
         if (cur === e.title) {
-            if (e.appliedAt) { confirmed.push(e); continue; }  // 上次写的还在 → 真成了
-            keep.push({ ...e, appliedAt: Date.now() });        // 本来就是它，标一下留队
+            // 文件层已对：但**列表显示看的是索引**，索引不跟上就白改
+            const idx = await indexTitleOf(e);
+            const idxOk = idx !== null && idx === e.title;
+            if (!idxOk && e.dir && e.id) {
+                try { await titleMod.writeTitleToIndex(e.dir, e.id, e.title, opts.currentDbPath || null); } catch { /* ignore */ }
+            }
+            if (e.appliedAt && idxOk) { confirmed.push(e); continue; }  // 文件 + 索引都确认 → 真成了
+            if (!idxOk) indexPending.push(e);
+            keep.push({ ...e, appliedAt: Date.now() });
             continue;
         }
 
@@ -132,7 +152,7 @@ async function applyAll(opts = {}) {
     }
 
     save(keep);
-    return { applied, confirmed, dropped, failed, remaining: keep.length };
+    return { applied, confirmed, dropped, failed, indexPending, remaining: keep.length };
 }
 
 module.exports = { queueDir, queuePath, load, save, add, tailDelta, applyAll };
