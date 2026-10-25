@@ -653,7 +653,7 @@ function activate(context) {
           );
         }
         return void vscode.window.showWarningMessage(
-          t('Renamed to "{0}" in the session file. That workspace is open, so the list title (which comes from the index) is queued — it gets applied after VS Code is closed.', newTitle),
+          t('Renamed to "{0}" in the session file. That workspace is open, so the list title (which comes from the index) is queued — opening that chat once refreshes it right away; otherwise it gets applied after VS Code is closed.', newTitle),
           { modal: true, detail: HINT_APPLY }
         );
       }
@@ -661,7 +661,7 @@ function activate(context) {
       // 并如实说清哪一半没做成、为什么会失败、什么情况下会自己生效。
       return void vscode.window.showWarningMessage(
         t('Renamed to "{0}" in the session file — that part is persistent. The title in the list was NOT updated: this workspace is open in a window, and writing its index from outside makes VS Code crash (SQLITE_BUSY).', newTitle),
-        { modal: true, detail: t('It usually shows up once that chat is loaded again, but it is lost if that chat is open right now and saves over the file. To be sure: rename it from another window (works immediately), or turn on "Allow editing open workspaces (preview)" so it gets applied automatically after VS Code closes.') }
+        { modal: true, detail: t('Open that chat once and the list title refreshes by itself (the model reloads the title from the file). It is only lost if that chat is already open and saves over the file. To be safe: rename it from another window (works immediately), or turn on "Allow editing open workspaces (preview)" so it gets re-applied automatically after VS Code closes.') }
       );
     }
 

@@ -65,19 +65,52 @@ async function isAvailable() {
     return !!_avail;
 }
 
-/** 读会话索引；返回 { ok, index?, error? } */
+/**
+ * 读会话索引；返回 { ok, index?, error? }
+ *
+ * 🔴 **绝不直接打开「有窗口开着」的 state.vscdb，读也不行。**
+ *   SQLite 回滚日志模式下，读事务持有 SHARED 锁期间，写入方拿不到 EXCLUSIVE，
+ *   VS Code 自己没有 busy 重试 → 主进程抛未捕获的 `SQLITE_BUSY` → **闪退**
+ *   （2026-10-26 实测：两次崩溃转储都对应外部读取的时刻）。
+ *   → 先复制一份到临时目录，读副本。副本可能略有滞后，但我们只要一个 JSON 快照。
+ */
 async function readIndex(dbPath) {
     if (!fs.existsSync(dbPath)) return { ok: false, error: t('state.vscdb not found') };
-    const r = await runSql(dbPath, `SELECT value FROM ItemTable WHERE key='${IDX_KEY}';`);
-    if (!r.ok) return { ok: false, error: r.error || r.stderr || t('sqlite3 exited with code {0}', r.code) };
-    const txt = (r.stdout || '').trim();
-    if (!txt) return { ok: true, index: { version: 1, entries: {} } };
+
+    let target = dbPath;
+    let tmpDir = null;
+    if (live.isDbOpen(dbPath)) {
+        try {
+            tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wsmgr-read-'));
+            target = path.join(tmpDir, 'state.vscdb');
+            fs.copyFileSync(dbPath, target);
+            // 事务未提交时，最新内容可能在 journal / wal 里；一并复制让副本可读
+            for (const ext of ['-journal', '-wal', '-shm']) {
+                const src = dbPath + ext;
+                if (fs.existsSync(src)) {
+                    try { fs.copyFileSync(src, target + ext); } catch { /* ignore */ }
+                }
+            }
+        } catch (e) {
+            if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ } }
+            return { ok: false, error: t('Cannot snapshot the live database: {0}', (e && e.message) || e) };
+        }
+    }
+
     try {
-        const j = JSON.parse(txt);
-        if (!j || typeof j !== 'object' || !j.entries) return { ok: false, error: t('Unexpected index structure') };
-        return { ok: true, index: j };
-    } catch (e) {
-        return { ok: false, error: t('Failed to parse index JSON: {0}', e.message) };
+        const r = await runSql(target, `SELECT value FROM ItemTable WHERE key='${IDX_KEY}';`);
+        if (!r.ok) return { ok: false, error: r.error || r.stderr || t('sqlite3 exited with code {0}', r.code) };
+        const txt = (r.stdout || '').trim();
+        if (!txt) return { ok: true, index: { version: 1, entries: {} } };
+        try {
+            const j = JSON.parse(txt);
+            if (!j || typeof j !== 'object' || !j.entries) return { ok: false, error: t('Unexpected index structure') };
+            return { ok: true, index: j };
+        } catch (e) {
+            return { ok: false, error: t('Failed to parse index JSON: {0}', e.message) };
+        }
+    } finally {
+        if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ } }
     }
 }
 
