@@ -1,9 +1,9 @@
 // 校验：src/*.js 里每个 t('...') 的英文原文，都必须在中英 bundle 里有对应条目
-// 用法: node _tmp/l10n-check.js
+// 用法（在项目根）: node scripts/dev/check-l10n.js
 const fs = require('fs');
 const path = require('path');
 
-const root = path.join(__dirname, '..');
+const root = path.join(__dirname, '..', '..');
 const srcDir = path.join(root, 'src');
 const bundlePath = path.join(root, 'l10n', 'bundle.l10n.zh-cn.json');
 
