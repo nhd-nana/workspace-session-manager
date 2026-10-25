@@ -2,7 +2,7 @@
   "name": "workspace-session-manager",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "gy903",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -108,6 +108,11 @@
         "category": "%category%"
       },
       {
+        "command": "wsManager.renameSession",
+        "title": "%command.renameSession%",
+        "category": "%category%"
+      },
+      {
         "command": "wsManager.repairAll",
         "title": "%command.repairAll%",
         "category": "%category%",
@@ -202,6 +207,11 @@
           "group": "4_transfer@2"
         },
         {
+          "command": "wsManager.renameSession",
+          "when": "view == wsManager.workspaces && viewItem == wsSession",
+          "group": "3_rename@1"
+        },
+        {
           "command": "wsManager.deleteSession",
           "when": "view == wsManager.workspaces && viewItem == wsSession",
           "group": "9_danger@1"
@@ -234,6 +244,10 @@
         },
         {
           "command": "wsManager.moveSessionsTo",
+          "when": "false"
+        },
+        {
+          "command": "wsManager.renameSession",
           "when": "false"
         }
       ]

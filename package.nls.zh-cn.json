@@ -18,6 +18,7 @@
     "command.deleteSession": "删除会话（回收站）",
     "command.copySessionsTo": "复制会话到…",
     "command.moveSessionsTo": "移动会话到…",
+    "command.renameSession": "重命名会话（写进会话文件）",
     "command.repairAll": "一键修复",
     "command.repairIndex": "修复会话索引",
     "command.cleanEmptySessions": "清理空会话",

@@ -15,6 +15,7 @@ const store = require('./store');
 const repair = require('./repair');
 const transfer = require('./transfer');
 const dup = require('./dup');
+const titleMod = require('./title');
 const { fmtSize, fmtDate } = require('./util');
 const { t } = require('./l10n');
 
@@ -580,6 +581,45 @@ function activate(context) {
 
   reg('wsManager.copySessionsTo', () => transferSelected('copy'));
   reg('wsManager.moveSessionsTo', () => transferSelected('move'));
+
+  // ---------- 重命名会话（写进会话文件，不会被自动标题覆盖） ----------
+  reg('wsManager.renameSession', async (node) => {
+    const s = unwrap(node);
+    if (!s || !s.file) {
+      return void vscode.window.showWarningMessage(t('Right-click a session in the list to rename it.'));
+    }
+    const current = s.title || '';
+    const input = await vscode.window.showInputBox({
+      prompt: t('New title for this session'),
+      value: current,
+      valueSelection: [0, current.length],
+      validateInput: (v) => {
+        const n = (v || '').trim();
+        if (!n) return t('The title cannot be empty.');
+        if (n.length > 120) return t('Keep it under 120 characters.');
+        return undefined;
+      }
+    });
+    if (input === undefined) return;
+    const newTitle = input.trim();
+
+    // ① 先写会话文件（这一肇才是真正持久的）
+    const wr = titleMod.writeTitleToFile(s.file, newTitle);
+    if (!wr.ok) return void vscode.window.showErrorMessage(wr.error);
+
+    // ② 索引尽力而为（当前工作区的可能被内存版本覆盖，但文件里已有 customTitle，下次打开就对了）
+    const dir = path.dirname(path.dirname(s.file));
+    const ir = await titleMod.writeTitleToIndex(dir, s.id, newTitle, null);
+
+    provider.refresh();
+    if (ir.ok) {
+      vscode.window.showInformationMessage(t('Renamed to "{0}".', newTitle));
+    } else {
+      vscode.window.showWarningMessage(
+        t('Renamed to "{0}" in the session file, but the index was not updated: {1}', newTitle, ir.error)
+      );
+    }
+  });
 
   // ---------- 还原索引备份 ----------
   reg('wsManager.restoreIndexBackup', async (node) => {
