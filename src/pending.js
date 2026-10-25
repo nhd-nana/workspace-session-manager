@@ -78,17 +78,30 @@ function tailDelta(file, bytes = 1 << 20) {
 
 /**
  * 执行队列。
- * @returns {Promise<{applied:Array, already:Array, dropped:Array, failed:Array, remaining:number}>}
+ *
+ * 出队策略是「**跨启动确认两次**」：
+ *   第 N 次启动写入 → 标 appliedAt，**继续留队**
+ *   第 N+1 次启动再看文件尾部：还是这个标题 → 说明确实活了 → 出队
+ *   若被抹掉了（尾部对不上）→ 重写一遍，继续留队
+ * 这样就算这次“抢不过”内存里的模型，下次启动也还能自愈。
+ *
+ * @returns {Promise<{applied:Array, confirmed:Array, dropped:Array, failed:Array, remaining:number}>}
  */
 async function applyAll(opts = {}) {
     const list = load();
     const applied = [];
-    const already = [];
+    const confirmed = [];
     const dropped = [];
     const failed = [];
+    const keep = [];
+    const MAX_AGE = 90 * 86400000;
 
     for (const e of list) {
-        if (!e || !e.file) { dropped.push({ e }); continue; }
+        if (!e || !e.file || !e.title) { dropped.push({ e, reason: 'bad entry' }); continue; }
+        if (Date.now() - (e.ts || 0) > MAX_AGE) {
+            dropped.push({ e, reason: t('The session file no longer exists.') });
+            continue;
+        }
         if (!fs.existsSync(e.file)) {
             dropped.push({ e, reason: t('The session file no longer exists.') });
             continue;
@@ -96,12 +109,18 @@ async function applyAll(opts = {}) {
         let cur = null;
         try { cur = tailDelta(e.file); } catch (err) {
             failed.push({ e, reason: String((err && err.message) || err) });
+            keep.push(e);
             continue;
         }
-        if (cur === e.title) { already.push(e); continue; }
+
+        if (cur === e.title) {
+            if (e.appliedAt) { confirmed.push(e); continue; }  // 上次写的还在 → 真成了
+            keep.push({ ...e, appliedAt: Date.now() });        // 本来就是它，标一下留队
+            continue;
+        }
 
         const w = titleMod.writeTitleToFile(e.file, e.title);
-        if (!w.ok) { failed.push({ e, reason: w.error }); continue; }
+        if (!w.ok) { failed.push({ e, reason: w.error }); keep.push(e); continue; }
 
         if (!opts.skipIndex && e.dir && e.id) {
             try {
@@ -109,11 +128,11 @@ async function applyAll(opts = {}) {
             } catch { /* 索引尽力而为，文件才是权威 */ }
         }
         applied.push(e);
+        keep.push({ ...e, appliedAt: Date.now() });
     }
 
-    // 失败的留在队列里等下次重试
-    save(failed.map((x) => x.e));
-    return { applied, already, dropped, failed, remaining: failed.length };
+    save(keep);
+    return { applied, confirmed, dropped, failed, remaining: keep.length };
 }
 
 module.exports = { queueDir, queuePath, load, save, add, tailDelta, applyAll };

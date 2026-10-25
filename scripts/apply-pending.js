@@ -65,10 +65,12 @@ function isCodeRunning() {
     }
 
     const r = await pending.applyAll({});
-    console.log(`\n写入 ${r.applied.length} 个｜已生效出队 ${r.already.length} 个｜作废 ${r.dropped.length} 个｜失败 ${r.failed.length} 个`);
+    console.log(`\n写入 ${r.applied.length} 个｜确认生效 ${r.confirmed.length} 个｜作废 ${r.dropped.length} 个｜失败 ${r.failed.length} 个`);
     for (const x of r.dropped) console.log(`  ✗ 作废: ${x.e && x.e.file} — ${x.reason || ''}`);
     for (const x of r.failed) console.log(`  ✗ 失败: ${x.e && x.e.file} — ${x.reason}`);
-    console.log(r.remaining ? `队列里还剩 ${r.remaining} 条（失败项，下次会重试）` : '队列已清空。');
+    console.log(r.remaining
+        ? `队列里还剩 ${r.remaining} 条（下次启动会再核对一遍；两次都对上才出队）`
+        : '队列已清空。');
 })().catch((e) => {
     console.log('✗ 出错:', (e && e.message) || e);
     process.exit(1);
