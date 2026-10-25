@@ -163,6 +163,19 @@ node scripts\repair-index.js --path "d:\your-project" --apply
 
 检测到 `Code.exe` 正在运行时会**拒绝写入**（`--force` 可跳过，后果自负）。
 
+### 让「已有」agent 会话也跟随标题策略
+
+`chat.agentHost.experimental.titleGeneration` **只对新会话生效** —— 每个会话把当时的策略存进了
+自己 `session.db` 的 `session_metadata.titleGenerationStrategy`，之后一直按那份走。
+想把老会话改过来，用这个脚本（同样建议先完全退出 VS Code）：
+
+```powershell
+node scripts\reset-title-strategy.js                  # 只体检：打印现状分布
+node scripts\reset-title-strategy.js --apply          # 全部改成 utility（agent 不再插手命名）
+node scripts\reset-title-strategy.js --apply --value agentReview
+node scripts\reset-title-strategy.js --apply --delete # 删掉该键 → 回退代码默认 utility
+```
+
 ---
 
 ## 原理

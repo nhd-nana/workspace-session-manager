@@ -1,5 +1,13 @@
 # 更新日志
 
+## 0.0.4
+
+- **新增 `scripts/reset-title-strategy.js`**：让**已有**的 agent-host 会话重新跟随
+  `chat.agentHost.experimental.titleGeneration`。那个设置只对新会话生效 ——
+  每个会话把当时的策略存进了自己 `session.db` 的 `session_metadata.titleGenerationStrategy`。
+  脚本默认只体检，`--apply` 才写；`Code.exe` 在跑时拒绝（`--force` 可跳过）。
+- `src/sqlite.js` 导出 `runSql`，供独立脚本复用
+
 ## 0.0.3
 
 - **新增「重命名会话」**：把标题以 `{"kind":1,"k":["customTitle"],"v":"…"}` 追加**写进会话文件**，同时更新索引。

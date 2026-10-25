@@ -221,14 +221,13 @@
     "All go to the Recycle Bin.": "全部移入回收站。",
     "Note: only the data files are deleted, so empty index entries remain (they appear as blank items in the panel) — run \"One-Click Repair\" once to clear them.": "注意：只删除数据文件，索引里会残留对应的空条目（面板里表现为空白项）—— 跑一次「一键修复」即可清掉。",
     " If blank items show up in the panel, run \"One-Click Repair\" once to clear them.": "若面板里出现空白项，跑一次「一键修复」即可清掉。",
-
-  "The session file does not exist: {0}": "会话文件不存在：{0}",
-  "This session uses the compact (single-line) format, so renaming is not supported.": "该会话用的是紧凑（单行）格式，暂不支持重命名。",
-  "This session is not registered in the index (it is an orphan).": "该会话没有登记在索引里（是孤儿）。",
-  "Right-click a session in the list to rename it.": "请在会话列表里右键再重命名。",
-  "New title for this session": "这个会话的新标题",
-  "The title cannot be empty.": "标题不能为空。",
-  "Keep it under 120 characters.": "请控制在 120 字以内。",
-  "Renamed to \"{0}\".": "已改名为「{0}」。",
-  "Renamed to \"{0}\" in the session file, but the index was not updated: {1}": "已在会话文件里改名为「{0}」，但索引未更新：{1}"
+    "The session file does not exist: {0}": "会话文件不存在：{0}",
+    "This session uses the compact (single-line) format, so renaming is not supported.": "该会话用的是紧凑（单行）格式，暂不支持重命名。",
+    "This session is not registered in the index (it is an orphan).": "该会话没有登记在索引里（是孤儿）。",
+    "Right-click a session in the list to rename it.": "请在会话列表里右键再重命名。",
+    "New title for this session": "这个会话的新标题",
+    "The title cannot be empty.": "标题不能为空。",
+    "Keep it under 120 characters.": "请控制在 120 字以内。",
+    "Renamed to \"{0}\".": "已改名为「{0}」。",
+    "Renamed to \"{0}\" in the session file, but the index was not updated: {1}": "已在会话文件里改名为「{0}」，但索引未更新：{1}"
 }

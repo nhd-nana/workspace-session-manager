@@ -18,7 +18,7 @@
     "command.deleteSession": "Delete Session (Recycle Bin)",
     "command.copySessionsTo": "Copy Sessions To…",
     "command.moveSessionsTo": "Move Sessions To…",
-  "command.renameSession": "Rename Session (writes into the session file)",
+    "command.renameSession": "Rename Session (writes into the session file)",
     "command.repairAll": "One-Click Repair",
     "command.repairIndex": "Repair Session Index",
     "command.cleanEmptySessions": "Clean Empty Sessions",

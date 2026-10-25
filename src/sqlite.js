@@ -106,4 +106,4 @@ async function writeIndex(dbPath, indexObj, currentDbPath) {
     }
 }
 
-module.exports = { IDX_KEY, isAvailable, readIndex, writeIndex };
+module.exports = { IDX_KEY, isAvailable, readIndex, writeIndex, runSql };
