@@ -22,12 +22,5 @@
     "command.repairAll": "一键修复",
     "command.repairIndex": "修复会话索引",
     "command.cleanEmptySessions": "清理空会话",
-    "command.restoreIndexBackup": "还原索引备份",
-    "command.dropPending": "撤销这条待办改名",
-    "command.clearPending": "清空全部待办改名",
-    "command.showAutoLog": "查看自动执行日志",
-    "command.installAutoTask": "安装计划任务（关闭 VS Code 后自动应用待办改名）",
-    "command.uninstallAutoTask": "卸载计划任务",
-    "command.taskStatus": "计划任务状态",
-    "config.pendingQueue": "**预览版。** 会话所属的工作区正开在某个窗口里时，它的会话索引不能从外部写（VS Code 会撞上 SQLITE_BUSY 而闪退）。\n\n- **开启**：这类改名会进入**待办队列**，在 VS Code 关闭后自动应用（计划任务 / 独立脚本）。\n- **关闭**（默认）：改名会立即写进会话文件，但**列表里的标题不会变** —— 只能听天由命，建议先关掉那个工作区，或从另一个窗口改。"
+    "command.restoreIndexBackup": "还原索引备份"
 }

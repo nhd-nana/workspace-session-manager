@@ -22,12 +22,5 @@
     "command.repairAll": "One-Click Repair",
     "command.repairIndex": "Repair Session Index",
     "command.cleanEmptySessions": "Clean Empty Sessions",
-    "command.restoreIndexBackup": "Restore Index Backup",
-    "command.dropPending": "Drop This Pending Rename",
-    "command.clearPending": "Clear All Pending Renames",
-    "command.showAutoLog": "Show Automatic-Run Log",
-    "command.installAutoTask": "Install Scheduled Task (apply pending renames while VS Code is closed)",
-    "command.uninstallAutoTask": "Uninstall Scheduled Task",
-    "command.taskStatus": "Scheduled Task Status",
-    "config.pendingQueue": "**Preview.** When the workspace a session belongs to is open in a window, its session index cannot be written from outside (VS Code would hit SQLITE_BUSY and crash). With this on, such renames are queued and applied automatically after VS Code closes. Off: the rename is written to the session file immediately but the title in the list stays unchanged — close that workspace, or rename it from another window instead."
+    "command.restoreIndexBackup": "Restore Index Backup"
 }

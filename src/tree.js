@@ -10,7 +10,6 @@ const path = require('path');
 const vscode = require('vscode');
 const { fmtSize, fmtDate, exists } = require('./util');
 const store = require('./store');
-const pendingMod = require('./pending');
 const { t } = require('./l10n');
 
 class Node {
@@ -56,16 +55,6 @@ class WorkspaceTreeProvider {
       return this._groupItem(node, t('Sessions ({0}{1})', n, extra), 'comment-discussion');
     }
     if (node.kind === 'group-index') return this._groupItem(node, t('Session index overview'), 'list-tree');
-    if (node.kind === 'group-pending') {
-      const n = node.data.length;
-      const it = new vscode.TreeItem(t('Pending renames ({0})', n), vscode.TreeItemCollapsibleState.Expanded);
-      it.iconPath = new vscode.ThemeIcon('clock');
-      it.contextValue = 'wsPendingGroup';
-      it.description = t('applied automatically once VS Code is closed');
-      it.tooltip = t('Each entry is written to the session file now, but the title shown in the list lives in the index — which can only be updated while VS Code is closed.');
-      return it;
-    }
-    if (node.kind === 'pending') return this._pendingItem(node.data);
     if (node.kind === 'stat') {
       const it = new vscode.TreeItem(node.data.label, vscode.TreeItemCollapsibleState.None);
       it.iconPath = new vscode.ThemeIcon(node.data.icon || 'info');
@@ -80,11 +69,8 @@ class WorkspaceTreeProvider {
 
   async getChildren(node) {
     if (!node) {
-      const ws = this.state.items.map((w) => new Node('workspace', w));
-      const q = pendingMod.load();
-      return q.length ? [new Node('group-pending', q), ...ws] : ws;
+      return this.state.items.map((w) => new Node('workspace', w));
     }
-    if (node.kind === 'group-pending') return node.data.map((e) => new Node('pending', e));
     if (node.kind === 'workspace') {
       const w = node.data;
       if (!w.size) store.computeSize(w);
@@ -107,21 +93,6 @@ class WorkspaceTreeProvider {
     return [];
   }
 
-  _pendingItem(e) {
-    const id = path.basename(e.file || '', '.jsonl');
-    const it = new vscode.TreeItem(e.title || id, vscode.TreeItemCollapsibleState.None);
-    it.id = 'pending:' + e.file;
-    it.contextValue = 'wsPending';
-    it.iconPath = new vscode.ThemeIcon('edit');
-    it.description = t('{0} · will be applied offline', id.slice(0, 8));
-    const md = new vscode.MarkdownString();
-    md.appendMarkdown(`**${e.title}**\n\n`);
-    md.appendMarkdown(t('- Session file: `{0}`', e.file) + '\n');
-    md.appendMarkdown(t('- Queued at: {0}', e.ts ? new Date(e.ts).toLocaleString() : '?'));
-    md.supportThemeIcons = true;
-    it.tooltip = md;
-    return it;
-  }
 
   _indexRows(w) {
     const v = store.visibility(w);

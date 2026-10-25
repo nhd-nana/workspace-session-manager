@@ -16,7 +16,6 @@ const repair = require('./repair');
 const transfer = require('./transfer');
 const dup = require('./dup');
 const titleMod = require('./title');
-const pending = require('./pending');
 const live = require('./live');
 const { fmtSize, fmtDate } = require('./util');
 const { t } = require('./l10n');
@@ -30,18 +29,6 @@ function unwrap(x) {
 function activate(context) {
   const provider = new WorkspaceTreeProvider(context);
   provider.refresh();
-
-  // 兜底：把上次没落盘的「待办改名」补写一遍（**只碰文件**，不碰索引 —— 见 pending.js 注释）
-  // 队列为空时什么都不做，启动零开销。
-  if (pending.load().length) {
-    pending.applyAll({}).then((r) => {
-      if (r.applied.length) {
-        vscode.window.showInformationMessage(
-          t('Applied {0} pending session rename(s) from the last window.', r.applied.length)
-        );
-      }
-    }).catch(() => { /* 队列坏了不影响主流程 */ });
-  }
 
   const view = vscode.window.createTreeView('wsManager.workspaces', {
     treeDataProvider: provider,
@@ -59,8 +46,6 @@ function activate(context) {
   const BTN_REPAIR = t('Start repair');
   const BTN_RESTORE = t('Restore');
   const idxErr = (e) => t('Failed to read the index: {0}', e);
-  // 唯一可靠路径：关光窗口 → 跑脚本（写完就退出，不留后台进程）
-  const HINT_APPLY = t('Applied automatically once VS Code is closed (scheduled task; you can also run scripts/apply-pending.js --apply yourself). No process stays running in the background. Right-click the "Pending renames" group to undo.');
 
   const reg = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
@@ -639,29 +624,13 @@ function activate(context) {
     const isCur = isCurrentWorkspaceSession(s.file);
     // 目标工作区是否正被**任何一个**窗口开着（不只本窗口）
     const isOpen = isCur || live.isDbOpen(path.join(dir, 'state.vscdb'));
-    const queueMode = vscode.workspace.getConfiguration('wsManager').get('pendingQueue', false) === true;
 
-    // ② 工作区开着 → 索引改不了（外部写会让 VS Code 撞 SQLITE_BUSY 闪退）
+    // ② 工作区开着 → 索引不能碰（外部写会让 VS Code 撞 SQLITE_BUSY 闪退）
+    //    文件已经写好了，剩下的一半交给 VS Code 自己：点进该会话 → 模型读回标题 → 索引更新
     if (isOpen) {
-      // 设置开启：入队，等关闭后的计划任务 / 离线脚本收尾
-      if (queueMode) {
-        const n = pending.add({ file: s.file, id: s.id, dir, title: newTitle });
-        provider.refresh();
-        if (n < 0) {
-          return void vscode.window.showWarningMessage(
-            t('Written into the session file, but the pending queue could not be saved. Rename it from another window instead.')
-          );
-        }
-        return void vscode.window.showWarningMessage(
-          t('Renamed to "{0}" in the session file. That workspace is open, so the list title (which comes from the index) is queued — opening that chat once refreshes it right away; otherwise it gets applied after VS Code is closed.', newTitle),
-          { modal: true, detail: HINT_APPLY }
-        );
-      }
-      // 设置关闭（默认）：**不拦截**，而是把能持久的那一半做完（写会话文件），
-      // 并如实说清哪一半没做成、为什么会失败、什么情况下会自己生效。
       return void vscode.window.showWarningMessage(
-        t('Renamed to "{0}" in the session file — that part is persistent. The title in the list was NOT updated: this workspace is open in a window, and writing its index from outside makes VS Code crash (SQLITE_BUSY).', newTitle),
-        { modal: true, detail: t('Open that chat once and the list title refreshes by itself (the model reloads the title from the file). It is only lost if that chat is already open and saves over the file. To be safe: rename it from another window (works immediately), or turn on "Allow editing open workspaces (preview)" so it gets re-applied automatically after VS Code closes.') }
+        t('Renamed to "{0}" in the session file — that part is persistent. The title in the list is not refreshed yet, because this workspace is open in a window and its index cannot be written from outside.', newTitle),
+        { modal: true, detail: t('Open that chat once and the title refreshes by itself. It only gets lost if that chat is already open and saves over the file — in that case rename it from another window instead.') }
       );
     }
 
@@ -676,58 +645,6 @@ function activate(context) {
 
     vscode.window.showInformationMessage(t('Renamed to "{0}".', newTitle));
   });
-
-  // ---------- 待办改名：撤销 / 查看日志 / 注册自动执行 ----------
-  reg('wsManager.dropPending', async (node) => {
-    const e = unwrap(node);
-    if (!e || !e.file) return;
-    const ok = await vscode.window.showWarningMessage(
-      t('Drop "{0}" from the pending queue? The session file has already been written; this only cancels the index fix.', e.title || e.file),
-      { modal: true },
-      BTN_TRASH
-    );
-    if (ok !== BTN_TRASH) return;
-    const r = pending.remove(e.file);
-    provider.refresh();
-    vscode.window.showInformationMessage(
-      r.ok ? t('Dropped. {0} pending rename(s) left.', r.remaining) : t('Could not update the queue file.')
-    );
-  });
-
-  reg('wsManager.clearPending', async () => {
-    const n = pending.load().length;
-    if (!n) return void vscode.window.showInformationMessage(t('The pending queue is empty.'));
-    const ok = await vscode.window.showWarningMessage(
-      t('Drop all {0} pending rename(s)? Session files keep their current titles; only the index fixes are cancelled.', n),
-      { modal: true },
-      BTN_TRASH
-    );
-    if (ok !== BTN_TRASH) return;
-    pending.save([]);
-    provider.refresh();
-    vscode.window.showInformationMessage(t('Pending queue cleared.'));
-  });
-
-  reg('wsManager.showAutoLog', async () => {
-    const p = pending.autoLogPath();
-    if (!require('fs').existsSync(p)) {
-      return void vscode.window.showInformationMessage(t('No automatic run has happened yet.'));
-    }
-    const doc = await vscode.workspace.openTextDocument(p);
-    await vscode.window.showTextDocument(doc, { preview: true });
-  });
-
-  async function runTaskScript(action) {
-    const ps = path.join(context.extensionPath, 'scripts', 'manage-task.ps1');
-    if (!require('fs').existsSync(ps)) {
-      return void vscode.window.showErrorMessage(t('manage-task.ps1 not found in the extension folder.'));
-    }
-    const term = vscode.window.createTerminal({ name: t('Workspace & Session Manager — task'), cwd: context.extensionPath });
-    term.show();
-    term.sendText(`powershell -NoProfile -ExecutionPolicy Bypass -File "${ps}" -Action ${action}`, true);
-  }
-
-  reg('wsManager.installAutoTask', () => runTaskScript('install'));
   reg('wsManager.uninstallAutoTask', () => runTaskScript('uninstall'));
   reg('wsManager.taskStatus', () => runTaskScript('status'));
 
