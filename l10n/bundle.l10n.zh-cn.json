@@ -119,14 +119,8 @@
     "Move to Recycle Bin": "移到回收站",
     "Start repair": "开始修复",
     "Restore": "还原",
-    "Reload Window Now": "立即重载窗口",
     "Failed to read the index: {0}": "读取索引失败：{0}",
     "$(sync~spin) Comparing session fingerprints…": "$(sync~spin) 正在比对会话指纹…",
-    "⚠️ Reload the window **before you keep chatting**.": "⚠️ 请在**继续聊天之前**重载窗口。",
-    "This window still holds the pre-change index in memory — any session change (send a message / create a session / rename one)": "本窗口内存里仍是修改前的索引 —— 只要发生任何会话变更（发一条消息 / 新建会话 / 改标题），",
-    " writes the old copy back to disk and overwrites what was just fixed.": "它就会把旧版本整体写回盘上，覆盖掉刚才的修改。",
-    "If the affected workspace is open in another window, reload it there **before you keep chatting**,": "如果涉及的工作区正开在其它窗口：请在那边**继续聊天之前**重载窗口，",
-    " otherwise its stale index would overwrite this change. Ignore this if it is not open.": "否则它的旧索引会把这次修改覆盖掉。没开着的话不用管。",
     "Pick the workspace whose index to repair": "选择要修复索引的工作区",
     "Index entries: {0} ({1} of them external sessions, whose data lives in agentSessionData and is never cleaned)": "索引条目 {0}（其中外部会话 {1} 条，实体在 agentSessionData，永不清理）",
     "Session files: {0}　→　visible {1}　orphaned {2}　ghost entries {3}": "会话文件 {0}　→　可见 {1}　孤儿 {2}　幽灵条目 {3}",
@@ -232,8 +226,10 @@
     "Applied {0} pending session rename(s) from the last window.": "已补写上一窗口遗留的 {0} 个改名。",
     "The session file no longer exists.": "会话文件已不存在。",
     "Written into the session file, but this session belongs to the current workspace, and the pending queue could not be saved. Rename it from another window instead.": "已写进会话文件，但这个会话属于**当前工作区**，且**待办队列保存失败**。请**到另一个窗口**里改这个会话。",
-    "Close all VS Code windows, then run: node scripts/apply-pending.js --apply. No background process is spawned. Renaming sessions of *other* workspaces works immediately.": "**关闭所有 VS Code 窗口**，然后跑 `node scripts/apply-pending.js --apply`。不会启动任何后台进程。改**其它**工作区的会话则立刻生效。",
-    "Renamed to \"{0}\" in the session file. This session belongs to the current workspace, so the title shown in the list (which comes from the index) can only be fixed while VS Code is closed — it is queued for that.": "已在会话文件里改名为「{0}」。这个会话属于**当前工作区**，列表显示读的是**索引**，而索引只能在 VS Code 完全关闭时才能改 —— 已记入待办队列。",
     "Renamed to \"{0}\" in the session file, but the index was not updated: {1} — it is queued for scripts/apply-pending.js.": "已在会话文件里改名为「{0}」，但索引未更新：{1} —— 已记入待办队列，交给 scripts/apply-pending.js。",
-    "Refusing to write: the workspace owning this database is open in a VS Code window. Writing it from outside makes VS Code hit SQLITE_BUSY and crash. Close that window first.": "拒绝写入：拥有这个数据库的工作区正被某个 VS Code 窗口打开。从外部写会让 VS Code 撞上 SQLITE_BUSY 而闪退。请先关掉那个窗口。"
+    "Refusing to write: the workspace owning this database is open in a VS Code window. Writing it from outside makes VS Code hit SQLITE_BUSY and crash. Close that window first.": "拒绝写入：拥有这个数据库的工作区正被某个 VS Code 窗口打开。从外部写会让 VS Code 撞上 SQLITE_BUSY 而闪退。请先关掉那个窗口。",
+    "Close ALL VS Code windows, then run:\n\n    node scripts/apply-pending.js --apply\n\nIt writes and exits immediately — no background process is left behind.": "**关闭所有 VS Code 窗口**，然后运行：\n\n    node scripts/apply-pending.js --apply\n\n它会写完立刻退出，**不会留下任何后台进程**。",
+    "The index was NOT updated: that workspace is open in a window. Writing it from outside makes VS Code hit SQLITE_BUSY and crash, and the window would overwrite it anyway.": "**索引没有更新**：那个工作区正开在某个窗口里。从外部写会让 VS Code 撞上 SQLITE_BUSY 而闪退，而且窗口里的内存副本也会把它盖回去。",
+    "Close that window and run the operation again.": "关掉那个窗口后，重新操作一次。",
+    "Renamed to \"{0}\" in the session file. This session belongs to a workspace that is open in a window, so the title shown in the list (which comes from the index) cannot be fixed right now — it is queued for the offline script.": "已在会话文件里改名为「{0}」。这个会话所属的工作区正开在某个窗口里，**列表标题（读的是索引）现在改不了** —— 已记入待办队列，交给离线脚本。"
 }

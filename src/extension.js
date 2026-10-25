@@ -57,8 +57,9 @@ function activate(context) {
   const BTN_TRASH = t('Move to Recycle Bin');
   const BTN_REPAIR = t('Start repair');
   const BTN_RESTORE = t('Restore');
-  const BTN_RELOAD = t('Reload Window Now');
   const idxErr = (e) => t('Failed to read the index: {0}', e);
+  // 唯一可靠路径：关光窗口 → 跑脚本（写完就退出，不留后台进程）
+  const HINT_APPLY = t('Close ALL VS Code windows, then run:\n\n    node scripts/apply-pending.js --apply\n\nIt writes and exits immediately — no background process is left behind.');
 
   const reg = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
@@ -284,24 +285,27 @@ function activate(context) {
    * 当前工作区**必须**立即重载：本窗口内存里仍是旧索引，
    * 任何时候发生会话变更（发消息 / 新建 / 改标题）都会把旧版本整体写回盘上。
    */
-  async function offerReload(msg, mustReload, extra) {
-    if (mustReload) {
-      const detail = (extra ? extra + '\n\n' : '')
-        + t('⚠️ Reload the window **before you keep chatting**.') + '\n\n'
-        + t('This window still holds the pre-change index in memory — any session change (send a message / create a session / rename one)')
-        + t(' writes the old copy back to disk and overwrites what was just fixed.');
-      const pick = await vscode.window.showInformationMessage(msg, { detail }, BTN_RELOAD);
-      if (pick === BTN_RELOAD) {
-        await vscode.commands.executeCommand('workbench.action.reloadWindow');
-      }
-      return;
+  /**
+   * 索引类改动结束后的收尾提示。
+   *
+   * 🔴 现在**不再提议重载窗口**：重载不会把外部写入带回来。索引在窗口内存里有整份副本，
+   *    运行期间我们根本没写成功（`sqlite.writeIndex()` 会拒绝，否则 VS Code 撞 SQLITE_BUSY 闪退）。
+   *    唯一可靠的时机是「窗口全部关闭」。
+   *
+   * @param {string} msg 结果标题
+   * @param {boolean} targetWasOpen 目标工作区是不是正开在某个窗口
+   * @param {string} [extra] 附加信息
+   */
+  async function offerReload(msg, targetWasOpen, extra) {
+    if (targetWasOpen) {
+      return void vscode.window.showWarningMessage(msg, {
+        modal: true,
+        detail: (extra ? extra + '\n\n' : '')
+          + t('The index was NOT updated: that workspace is open in a window. Writing it from outside makes VS Code hit SQLITE_BUSY and crash, and the window would overwrite it anyway.')
+          + '\n\n' + t('Close that window and run the operation again.')
+      });
     }
-    // 改动不涉及当前窗口 → 不打扰，但要提醒「那边若开着，别接着聊」
-    vscode.window.showInformationMessage(msg, {
-      detail: (extra ? extra + '\n\n' : '')
-        + t('If the affected workspace is open in another window, reload it there **before you keep chatting**,')
-        + t(' otherwise its stale index would overwrite this change. Ignore this if it is not open.')
-    });
+    vscode.window.showInformationMessage(msg, extra ? { detail: extra } : undefined);
   }
 
   reg('wsManager.repairIndex', async (node) => {
@@ -645,8 +649,8 @@ function activate(context) {
         );
       }
       return void vscode.window.showWarningMessage(
-        t('Renamed to "{0}" in the session file. This session belongs to the current workspace, so the title shown in the list (which comes from the index) can only be fixed while VS Code is closed — it is queued for that.', newTitle),
-        { modal: true, detail: t('Close all VS Code windows, then run: node scripts/apply-pending.js --apply. No background process is spawned. Renaming sessions of *other* workspaces works immediately.') }
+        t('Renamed to "{0}" in the session file. This session belongs to a workspace that is open in a window, so the title shown in the list (which comes from the index) cannot be fixed right now — it is queued for the offline script.', newTitle),
+        { modal: true, detail: HINT_APPLY }
       );
     }
 
