@@ -2,7 +2,7 @@
   "name": "workspace-session-manager",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "gy903",
   "license": "MIT",
   "icon": "images/icon.png",

@@ -229,5 +229,7 @@
     "The title cannot be empty.": "标题不能为空。",
     "Keep it under 120 characters.": "请控制在 120 字以内。",
     "Renamed to \"{0}\".": "已改名为「{0}」。",
+    "Renamed to \"{0}\". This session belongs to the current workspace — VS Code keeps its own copy of the title in memory and writes it back, so the change only sticks after a window reload.": "已改名为「{0}」。这个会话属于当前工作区——VS Code 内存里另存了一份标题并会回写，所以必须重载窗口才会生效。",
+    "Tip: renaming sessions of *other* workspaces does not need a reload.": "提示：改**其它**工作区的会话不需要重载。",
     "Renamed to \"{0}\" in the session file, but the index was not updated: {1}": "已在会话文件里改名为「{0}」，但索引未更新：{1}"
 }

@@ -49,6 +49,16 @@ function activate(context) {
 
   const reg = (id, fn) => context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
+  /**
+   * 会话是否属于「本窗口打开的工作区」。
+   * 这类会话的标题在 VS Code 内存里另有一份，改完文件不改内存 → 下次写索引会把旧标题盖回来，
+   * 所以只能提示重载窗口（对外部工作区的会话没这个问题）。
+   */
+  function isCurrentWorkspaceSession(file) {
+    const w = (provider.state.items || []).find((i) => (i.sessionFiles || []).indexOf(file) >= 0);
+    return !!(w && w.isCurrent);
+  }
+
   // ---------- 体积计算（后台、分批、可中断） ----------
   async function sizeAll() {
     const pending = provider.state.items.filter((i) => i.size === null).length;
@@ -610,15 +620,30 @@ function activate(context) {
     // ② 索引尽力而为（当前工作区的可能被内存版本覆盖，但文件里已有 customTitle，下次打开就对了）
     const dir = path.dirname(path.dirname(s.file));
     const ir = await titleMod.writeTitleToIndex(dir, s.id, newTitle, null);
+    const isCur = isCurrentWorkspaceSession(s.file);
 
     provider.refresh();
-    if (ir.ok) {
-      vscode.window.showInformationMessage(t('Renamed to "{0}".', newTitle));
-    } else {
-      vscode.window.showWarningMessage(
+    if (!ir.ok) {
+      return void vscode.window.showWarningMessage(
         t('Renamed to "{0}" in the session file, but the index was not updated: {1}', newTitle, ir.error)
       );
     }
+
+    // ③ 当前工作区的会话：内存里还留着旧标题，不回写就会把这次改名盖掉
+    if (isCur) {
+      const pick = await vscode.window.showWarningMessage(
+        t('Renamed to "{0}". This session belongs to the current workspace — VS Code keeps its own copy of the title in memory and writes it back, so the change only sticks after a window reload.',
+          newTitle),
+        { modal: true, detail: t('Tip: renaming sessions of *other* workspaces does not need a reload.') },
+        BTN_RELOAD
+      );
+      if (pick === BTN_RELOAD) {
+        await vscode.commands.executeCommand('workbench.action.reloadWindow');
+      }
+      return;
+    }
+
+    vscode.window.showInformationMessage(t('Renamed to "{0}".', newTitle));
   });
 
   // ---------- 还原索引备份 ----------
