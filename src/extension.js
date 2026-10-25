@@ -629,18 +629,13 @@ function activate(context) {
       );
     }
 
-    // ③ 当前工作区的会话：内存里还留着旧标题，不回写就会把这次改名盖掉
+    // ③ 当前工作区的会话：VS Code 会把整个文件按内存里的标题重写（紧凑格式），把追加的增量抹掉
+    //    → 只告知，不提议重载（重载正好触发那次重写）
     if (isCur) {
-      const pick = await vscode.window.showWarningMessage(
-        t('Renamed to "{0}". This session belongs to the current workspace — VS Code keeps its own copy of the title in memory and writes it back, so the change only sticks after a window reload.',
-          newTitle),
-        { modal: true, detail: t('Tip: renaming sessions of *other* workspaces does not need a reload.') },
-        BTN_RELOAD
+      return void vscode.window.showWarningMessage(
+        t('Written into the session file, but this session belongs to the current workspace: VS Code rewrites the whole file from memory when this window saves, which drops the new title. Rename it from another window instead.'),
+        { modal: true, detail: t('Renaming sessions of *other* workspaces works immediately and needs no reload.') }
       );
-      if (pick === BTN_RELOAD) {
-        await vscode.commands.executeCommand('workbench.action.reloadWindow');
-      }
-      return;
     }
 
     vscode.window.showInformationMessage(t('Renamed to "{0}".', newTitle));
