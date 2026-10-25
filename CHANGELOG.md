@@ -1,5 +1,14 @@
 # 更新日志
 
+## 0.0.7
+
+- **待办改名队列**：改「当前工作区」的会话时，除写文件外再把意图记进
+  `globalStorage\gy903.workspace-session-manager\pending-renames.json`，下次启动自动补写（幂等，先看文件尾部有没有同一条 delta）。
+- **分离进程 watcher**（`scripts/watch-pending.js`）：记入队列后自动拉起，
+  等目标工作区的窗口**全部关闭**再落盘，完成后弹窗确认。VS Code 关闭后它照样活。
+- `scripts/apply-pending.js`：手动执行队列，适合完全退出 VS Code 后跑。
+- 命令面板新增「测试：拉起分离进程 watcher」，用来验证 detached 子进程能否活过窗口关闭。
+
 ## 0.0.6
 
 - **修正 0.0.5 的错误建议**：重命名「当前工作区」的会话后**不要**重载窗口——
